@@ -1,0 +1,170 @@
+/**
+ * Quiz result persistence — Supabase-first, localStorage fallback.
+ *
+ * A "session" in Supabase matches what the app currently stores locally:
+ *   { score, total, pct, timestamp }
+ *
+ * For unauthenticated users we still write to localStorage so the trend
+ * chart keeps working.  When a user is signed in we write to Supabase
+ * AND keep localStorage in sync so reads are fast / offline-tolerant.
+ */
+
+import { supabase } from "./supabaseClient";
+
+// ── Local types ───────────────────────────────────────────────────────────────
+
+export interface QuizResult {
+  score: number;
+  total: number;
+  pct: number;
+  timestamp: number;
+}
+
+export interface SaveResultOptions {
+  quizId: string;
+  result: QuizResult;
+  /** Per-question answer indices the quiz page already tracks */
+  answers?: (number | null)[];
+  /** Time used in seconds */
+  timeUsedSeconds?: number;
+}
+
+// ── localStorage helpers (unchanged from original) ───────────────────────────
+
+const LS_PREFIX = "quizsharp-results-";
+
+function lsLoad(quizId: string): QuizResult[] {
+  try {
+    const raw = localStorage.getItem(`${LS_PREFIX}${quizId}`);
+    return raw ? (JSON.parse(raw) as QuizResult[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function lsSave(quizId: string, results: QuizResult[]): void {
+  try {
+    localStorage.setItem(`${LS_PREFIX}${quizId}`, JSON.stringify(results));
+  } catch {
+    // private browsing / storage full — silently ignore
+  }
+}
+
+// ── Supabase helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Persist a completed quiz session to the `sessions` table.
+ * Returns the new session id, or null on failure.
+ */
+async function insertSession(
+  quizId: string,
+  result: QuizResult,
+  userId: string | null,
+  timeUsedSeconds?: number
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert({
+      user_id: userId,
+      quiz_id: quizId,
+      started_at: new Date(result.timestamp - (timeUsedSeconds ?? 0) * 1000).toISOString(),
+      ended_at: new Date(result.timestamp).toISOString(),
+      total_questions: result.total,
+      total_correct: result.score,
+      time_spent_seconds: timeUsedSeconds ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("[quizResults] insertSession error:", error.message);
+    return null;
+  }
+  return data?.id ?? null;
+}
+
+/**
+ * Load all past sessions for this quiz from Supabase for the current user.
+ * Converts them back into the QuizResult shape the UI expects.
+ */
+async function loadSessionsFromSupabase(
+  quizId: string,
+  userId: string
+): Promise<QuizResult[]> {
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("total_correct, total_questions, ended_at")
+    .eq("quiz_id", quizId)
+    .eq("user_id", userId)
+    .order("ended_at", { ascending: true });
+
+  if (error || !data) {
+    console.error("[quizResults] loadSessions error:", error?.message);
+    return [];
+  }
+
+  return data.map((row) => {
+    const pct = Math.round((row.total_correct / row.total_questions) * 100);
+    return {
+      score: row.total_correct,
+      total: row.total_questions,
+      pct,
+      timestamp: new Date(row.ended_at ?? Date.now()).getTime(),
+    };
+  });
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Save a quiz result.
+ *
+ * - Always appends to localStorage (fast, works offline).
+ * - If the user is signed in, also writes to Supabase `sessions`.
+ *
+ * Returns the full updated history array (for the trend chart).
+ */
+export async function saveResult(opts: SaveResultOptions): Promise<QuizResult[]> {
+  const { quizId, result, timeUsedSeconds } = opts;
+
+  // 1. Always update localStorage
+  const existing = lsLoad(quizId);
+  const updated = [...existing, result];
+  lsSave(quizId, updated);
+
+  // 2. Attempt Supabase write if user is authenticated
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await insertSession(quizId, result, user.id, timeUsedSeconds);
+  }
+
+  return updated;
+}
+
+/**
+ * Load quiz history.
+ *
+ * - If user is signed in: fetch from Supabase (authoritative), then
+ *   back-fill localStorage so subsequent renders are instant.
+ * - Otherwise: return localStorage data.
+ */
+export async function loadResults(quizId: string): Promise<QuizResult[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const remote = await loadSessionsFromSupabase(quizId, user.id);
+    if (remote.length > 0) {
+      // Keep localStorage in sync for offline / fast reads
+      lsSave(quizId, remote);
+      return remote;
+    }
+  }
+
+  // Fall back to localStorage (unauthenticated or no remote data yet)
+  return lsLoad(quizId);
+}
