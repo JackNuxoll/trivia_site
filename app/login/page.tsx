@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -9,6 +9,14 @@ type Mode = "login" | "signup" | "magic";
 type Status = "idle" | "loading" | "success" | "error";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const redirectTo   = searchParams.get("redirectTo") ?? "/";
