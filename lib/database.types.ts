@@ -32,6 +32,9 @@ export interface Database {
           category: string;
           difficulty: number;
           created_at: string;
+          image_url: string | null;
+          wrong_answers: string[] | null;
+          explanation: string | null;
         };
         Insert: {
           id?: string;
@@ -40,6 +43,9 @@ export interface Database {
           category: string;
           difficulty: number;
           created_at?: string;
+          image_url?: string | null;
+          wrong_answers?: string[] | null;
+          explanation?: string | null;
         };
         Update: {
           id?: string;
@@ -48,6 +54,9 @@ export interface Database {
           category?: string;
           difficulty?: number;
           created_at?: string;
+          image_url?: string | null;
+          wrong_answers?: string[] | null;
+          explanation?: string | null;
         };
       };
       sessions: {

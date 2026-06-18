@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Nav from "@/components/Nav";
+import { useAuth } from "@/lib/AuthContext";
 
 // ── Sample data (replace with your JSON / DB queries later) ──────────────────
 const FEATURED_QUIZZES = [
+  { id: "flags",          category: "Geography", title: "World Flags",          questions: 10, difficulty: "Medium", plays: 0    },
   { id: "history-ww2",    category: "History",   title: "World War II",         questions: 15, difficulty: "Medium", plays: 1240 },
   { id: "science-space",  category: "Science",   title: "Space Exploration",    questions: 12, difficulty: "Hard",   plays: 980  },
   { id: "geo-capitals",   category: "Geography", title: "World Capitals",       questions: 20, difficulty: "Easy",   plays: 2310 },
   { id: "pop-culture-90", category: "Pop Culture", title: "90s Nostalgia",      questions: 10, difficulty: "Easy",   plays: 3100 },
   { id: "science-bio",    category: "Science",   title: "Human Biology",        questions: 18, difficulty: "Hard",   plays: 760  },
-  { id: "history-ancient",category: "History",   title: "Ancient Civilizations",questions: 14, difficulty: "Medium", plays: 890  },
 ];
 
 const STATS = [
@@ -35,6 +37,7 @@ const DIFFICULTY_STYLES: Record<string, { bg: string; color: string }> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
 
@@ -63,21 +66,6 @@ export default function HomePage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         .display { font-family: 'Sora', sans-serif; }
-
-        /* Nav */
-        .nav {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 0 clamp(1.5rem, 5vw, 4rem); height: 64px;
-          border-bottom: 1px solid #E5E3DC; background: #F8F7F4;
-          position: sticky; top: 0; z-index: 100;
-        }
-        .nav-logo { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: #1A1A2E; letter-spacing: -0.5px; }
-        .nav-logo span { color: #4F46E5; }
-        .nav-links { display: flex; align-items: center; gap: 8px; }
-        .nav-link { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #4B5563; text-decoration: none; transition: background 0.15s; }
-        .nav-link:hover { background: #EEECFF; color: #4F46E5; }
-        .nav-cta { padding: 8px 20px; border-radius: 8px; background: #4F46E5; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; transition: background 0.15s; }
-        .nav-cta:hover { background: #4338CA; }
 
         /* Hero */
         .hero {
@@ -195,14 +183,10 @@ export default function HomePage() {
       `}</style>
 
       {/* ── Nav ── */}
-      <nav className="nav">
-        <div className="nav-logo display">Quiz<span>Sharp</span></div>
-        <div className="nav-links">
-          <Link href="/quizzes"    className="nav-link">Browse</Link>
-          <Link href="/leaderboard" className="nav-link">Leaderboard</Link>
-          <Link href="/login"      className="nav-cta">Sign in</Link>
-        </div>
-      </nav>
+      <Nav links={[
+        { href: "/quizzes",     label: "Browse" },
+        { href: "/leaderboard", label: "Leaderboard" },
+      ]} />
 
       {/* ── Hero ── */}
       <section className="hero">
@@ -219,8 +203,10 @@ export default function HomePage() {
             Track your progress, climb the leaderboard, and fill the gaps.
           </p>
           <div className="hero-actions">
-            <Link href="/quizzes"  className="btn-primary">Browse quizzes</Link>
-            <Link href="/login"    className="btn-secondary">Sign in to track progress</Link>
+            <Link href="/quizzes" className="btn-primary">Browse quizzes</Link>
+            {!user && (
+              <Link href="/login" className="btn-secondary">Sign in to track progress</Link>
+            )}
           </div>
         </div>
 

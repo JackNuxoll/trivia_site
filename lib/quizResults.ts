@@ -20,11 +20,18 @@ export interface QuizResult {
   timestamp: number;
 }
 
+export interface ResponseData {
+  questionId: string;     // UUID for DB-backed questions, local id for static ones
+  isCorrect: boolean;
+  responseValue: string;  // the answer text the user selected
+  timeSpentMs?: number;
+}
+
 export interface SaveResultOptions {
   quizId: string;
   result: QuizResult;
-  /** Per-question answer indices the quiz page already tracks */
-  answers?: (number | null)[];
+  /** Per-question response details for the responses table */
+  responses?: ResponseData[];
   /** Time used in seconds */
   timeUsedSeconds?: number;
 }
@@ -83,6 +90,33 @@ async function insertSession(
   return data?.id ?? null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Persist per-question responses into the `responses` table.
+ * question_id is only written when the id is a real Supabase UUID;
+ * static quiz question ids ("q1", "q2") are stored as null.
+ */
+async function insertResponses(
+  sessionId: string,
+  userId: string | null,
+  responses: ResponseData[]
+): Promise<void> {
+  const rows = responses.map((r) => ({
+    session_id:     sessionId,
+    user_id:        userId,
+    question_id:    UUID_RE.test(r.questionId) ? r.questionId : null,
+    is_correct:     r.isCorrect,
+    response_value: r.responseValue,
+    time_spent_ms:  r.timeSpentMs ?? null,
+  }));
+
+  const { error } = await supabase.from("responses").insert(rows);
+  if (error) {
+    console.error("[quizResults] insertResponses error:", error.message);
+  }
+}
+
 /**
  * Load all past sessions for this quiz from Supabase for the current user.
  * Converts them back into the QuizResult shape the UI expects.
@@ -125,7 +159,7 @@ async function loadSessionsFromSupabase(
  * Returns the full updated history array (for the trend chart).
  */
 export async function saveResult(opts: SaveResultOptions): Promise<QuizResult[]> {
-  const { quizId, result, timeUsedSeconds } = opts;
+  const { quizId, result, timeUsedSeconds, responses } = opts;
 
   // 1. Always update localStorage
   const existing = lsLoad(quizId);
@@ -138,7 +172,17 @@ export async function saveResult(opts: SaveResultOptions): Promise<QuizResult[]>
   } = await supabase.auth.getUser();
 
   if (user) {
-    await insertSession(quizId, result, user.id, timeUsedSeconds);
+    const sessionId = await insertSession(quizId, result, user.id, timeUsedSeconds);
+    if (sessionId && responses?.length) {
+      await insertResponses(sessionId, user.id, responses);
+    }
+    // Return the Supabase-authoritative history so the trend chart reflects
+    // all sessions across every device, not just this browser's localStorage.
+    const remote = await loadSessionsFromSupabase(quizId, user.id);
+    if (remote.length > 0) {
+      lsSave(quizId, remote); // keep localStorage in sync
+      return remote;
+    }
   }
 
   return updated;

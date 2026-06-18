@@ -3,17 +3,18 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { saveResult, loadResults, type QuizResult } from "@/lib/quizResults";
+import { saveResult, type QuizResult, type ResponseData } from "@/lib/quizResults";
+import Nav from "@/components/Nav";
 
 // ── Quiz metadata ─────────────────────────────────────────────────────────────
 const QUIZ_META: Record<string, { title: string; category: string; difficulty: string }> = {
-  "science-space":      { title: "Space Exploration",      category: "Science",      difficulty: "Hard"   },
+  "flags":              { title: "World Flags",             category: "Geography",    difficulty: "Medium" },
+  "science-space":      { title: "Space Exploration",       category: "Science",      difficulty: "Hard"   },
   "history-ww2":        { title: "World War II",            category: "History",      difficulty: "Medium" },
   "geo-capitals":       { title: "World Capitals",          category: "Geography",    difficulty: "Easy"   },
   "pop-culture-90":     { title: "90s Nostalgia",           category: "Pop Culture",  difficulty: "Easy"   },
   "science-bio":        { title: "Human Biology",           category: "Science",      difficulty: "Hard"   },
   "history-ancient":    { title: "Ancient Civilizations",   category: "History",      difficulty: "Medium" },
-  "geo-flags":          { title: "Flags of the World",      category: "Geography",    difficulty: "Medium" },
   "sports-olympics":    { title: "Olympic History",         category: "Sports",       difficulty: "Medium" },
   "science-chem":       { title: "Chemistry Basics",        category: "Science",      difficulty: "Easy"   },
   "history-us":         { title: "U.S. Presidents",         category: "History",      difficulty: "Easy"   },
@@ -151,11 +152,21 @@ export default function ResultsPage() {
 
     async function persist() {
       try {
+        let responses: ResponseData[] | undefined;
+        try {
+          const raw = sessionStorage.getItem(`quiz-responses-${quizId}`);
+          if (raw) {
+            responses = JSON.parse(raw) as ResponseData[];
+            sessionStorage.removeItem(`quiz-responses-${quizId}`);
+          }
+        } catch { /* private browsing */ }
+
         const thisResult: QuizResult = { score, total, pct, timestamp: Date.now() };
         const all = await saveResult({
           quizId,
           result: thisResult,
           timeUsedSeconds: timeUsed,
+          responses,
         });
         if (!cancelled) {
           setHistory(all);
@@ -182,15 +193,6 @@ export default function ResultsPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .r-nav { display:flex;align-items:center;justify-content:space-between;padding:0 clamp(1.5rem,5vw,4rem);height:64px;border-bottom:1px solid #E5E3DC;background:#F8F7F4;position:sticky;top:0;z-index:50; }
-        .r-logo { font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:#1A1A2E;letter-spacing:-0.5px;text-decoration:none; }
-        .r-logo span { color:#4F46E5; }
-        .r-nav-links { display:flex;align-items:center;gap:8px; }
-        .r-nav-link { padding:8px 16px;border-radius:8px;font-size:14px;font-weight:500;color:#4B5563;text-decoration:none;transition:background 0.15s; }
-        .r-nav-link:hover { background:#EEECFF;color:#4F46E5; }
-        .r-nav-cta { padding:8px 20px;border-radius:8px;background:#4F46E5;color:#fff;font-size:14px;font-weight:600;text-decoration:none; }
-        .r-nav-cta:hover { background:#4338CA; }
 
         .r-shell { max-width:720px;margin:0 auto;padding:clamp(2rem,5vw,3.5rem) clamp(1.5rem,5vw,2rem) 5rem;display:flex;flex-direction:column;gap:1.5rem; }
 
@@ -242,14 +244,10 @@ export default function ResultsPage() {
         @media(max-width:420px){.actions-row{flex-direction:column}.score-main{flex-direction:column;align-items:flex-start}.score-right{text-align:left}}
       `}</style>
 
-      <nav className="r-nav">
-        <Link href="/" className="r-logo">Quiz<span>Sharp</span></Link>
-        <div className="r-nav-links">
-          <Link href="/quizzes"     className="r-nav-link">Browse</Link>
-          <Link href="/leaderboard" className="r-nav-link">Leaderboard</Link>
-          <Link href="/login"       className="r-nav-cta">Sign in</Link>
-        </div>
-      </nav>
+      <Nav links={[
+        { href: "/quizzes",     label: "Browse" },
+        { href: "/leaderboard", label: "Leaderboard" },
+      ]} />
 
       <div className="r-shell">
 
