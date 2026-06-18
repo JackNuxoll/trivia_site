@@ -7,12 +7,12 @@ import { useAuth } from "@/lib/AuthContext";
 
 // ── Sample data (replace with your JSON / DB queries later) ──────────────────
 const FEATURED_QUIZZES = [
-  { id: "flags",          category: "Geography", title: "World Flags",          questions: 10, difficulty: "Medium", plays: 0    },
-  { id: "history-ww2",    category: "History",   title: "World War II",         questions: 15, difficulty: "Medium", plays: 1240 },
-  { id: "science-space",  category: "Science",   title: "Space Exploration",    questions: 12, difficulty: "Hard",   plays: 980  },
-  { id: "geo-capitals",   category: "Geography", title: "World Capitals",       questions: 20, difficulty: "Easy",   plays: 2310 },
-  { id: "pop-culture-90", category: "Pop Culture", title: "90s Nostalgia",      questions: 10, difficulty: "Easy",   plays: 3100 },
-  { id: "science-bio",    category: "Science",   title: "Human Biology",        questions: 18, difficulty: "Hard",   plays: 760  },
+  { id: "nfl-divisions",    category: "Sports",      title: "NFL Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
+  { id: "mlb-divisions",    category: "Sports",      title: "MLB Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
+  { id: "nba-divisions",    category: "Sports",      title: "NBA Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
+  { id: "ncaa-conferences", category: "Sports",      title: "NCAA Conferences",    questions: 6,  difficulty: "Hard",   plays: 0,    isNew: true },
+  { id: "flags",            category: "Geography",   title: "World Flags",         questions: 10, difficulty: "Medium", plays: 0    },
+  { id: "history-ww2",      category: "History",     title: "World War II",        questions: 15, difficulty: "Medium", plays: 1240 },
 ];
 
 const STATS = [

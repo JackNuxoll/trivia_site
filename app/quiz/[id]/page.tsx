@@ -128,19 +128,80 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-// ── Fetch random flag questions from Supabase ─────────────────────────────────
-async function fetchFlagQuiz(): Promise<Quiz> {
+// ── Dynamic quiz config ───────────────────────────────────────────────────────
+interface DynamicQuizConfig {
+  category: string;
+  title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  questionsPerSession: number | [number, number]; // fixed count or [min, max]
+  secondsPerQuestion: number;
+  imageAlt: string;
+}
+
+const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
+  flags: {
+    category: "Flags",
+    title: "World Flags",
+    difficulty: "Medium",
+    questionsPerSession: 10,
+    secondsPerQuestion: 15,
+    imageAlt: "Flag to identify",
+  },
+  "nfl-divisions": {
+    category: "NFL Divisions",
+    title: "NFL Division Challenge",
+    difficulty: "Medium",
+    questionsPerSession: [4, 8],
+    secondsPerQuestion: 20,
+    imageAlt: "NFL team logo",
+  },
+  "mlb-divisions": {
+    category: "MLB Divisions",
+    title: "MLB Division Challenge",
+    difficulty: "Medium",
+    questionsPerSession: [4, 8],
+    secondsPerQuestion: 20,
+    imageAlt: "MLB team logo",
+  },
+  "nba-divisions": {
+    category: "NBA Divisions",
+    title: "NBA Division Challenge",
+    difficulty: "Medium",
+    questionsPerSession: [4, 8],
+    secondsPerQuestion: 20,
+    imageAlt: "NBA team logo",
+  },
+  "ncaa-conferences": {
+    category: "NCAA Conferences",
+    title: "NCAA Conference Challenge",
+    difficulty: "Hard",
+    questionsPerSession: [4, 8],
+    secondsPerQuestion: 20,
+    imageAlt: "NCAA team logo",
+  },
+};
+
+// ── Fetch dynamic quiz from Supabase ──────────────────────────────────────────
+async function fetchDynamicQuiz(quizId: string): Promise<Quiz> {
+  const config = DYNAMIC_QUIZ_CONFIG[quizId];
+  if (!config) throw new Error(`Unknown quiz: ${quizId}`);
+
   const { data, error } = await supabase
     .from("questions")
     .select("id, body, correct_answer, wrong_answers, explanation, image_url")
-    .eq("category", "Flags");
+    .eq("category", config.category);
 
   if (error) throw new Error(`Supabase error: ${error.message}`);
   if (!data?.length) throw new Error(
-    "No flag questions returned. If you already ran the migration, Row Level Security is likely blocking anonymous reads — run this in your Supabase SQL editor:\n\nALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS \"questions: public read\" ON public.questions;\nCREATE POLICY \"questions: public read\" ON public.questions FOR SELECT USING (true);"
+    `No questions found for "${config.title}". Make sure migration 003 has been run in the Supabase SQL editor, and that Row Level Security allows public reads:\n\nCREATE POLICY "questions: public read" ON public.questions FOR SELECT USING (true);`
   );
 
-  const selected = shuffle(data).slice(0, 10);
+  const qps = config.questionsPerSession;
+  const count = typeof qps === "number"
+    ? qps
+    : Math.floor(Math.random() * (qps[1] - qps[0] + 1)) + qps[0];
+
+  const selected = shuffle(data).slice(0, Math.min(count, data.length));
 
   const questions: Question[] = selected.map((row) => {
     const wrong: string[] = row.wrong_answers ?? [];
@@ -156,11 +217,11 @@ async function fetchFlagQuiz(): Promise<Quiz> {
   });
 
   return {
-    id: "flags",
-    title: "World Flags",
-    category: "Flags",
-    difficulty: "Medium",
-    timeLimitSeconds: 150,
+    id: quizId,
+    title: config.title,
+    category: config.category,
+    difficulty: config.difficulty,
+    timeLimitSeconds: questions.length * config.secondsPerQuestion,
     questions,
   };
 }
@@ -192,8 +253,9 @@ export default function QuizPage() {
   const router  = useRouter();
   const quizId  = typeof params.id === "string" ? params.id : "";
 
-  const isStaticQuiz = quizId in SAMPLE_QUIZZES;
-  const staticQuiz   = isStaticQuiz ? SAMPLE_QUIZZES[quizId] : null;
+  const isStaticQuiz  = quizId in SAMPLE_QUIZZES;
+  const isDynamicQuiz = quizId in DYNAMIC_QUIZ_CONFIG;
+  const staticQuiz    = isStaticQuiz ? SAMPLE_QUIZZES[quizId] : null;
 
   const [dynamicQuiz, setDynamicQuiz] = useState<Quiz | null>(null);
   const [loadError,   setLoadError]   = useState<string | null>(null);
@@ -219,11 +281,11 @@ export default function QuizPage() {
 
   // Fetch dynamic quiz on mount
   useEffect(() => {
-    if (isStaticQuiz) return;
-    fetchFlagQuiz()
-      .then((q) => setDynamicQuiz(q))
-      .catch((e) => setLoadError(e.message ?? "Failed to load quiz"));
-  }, [isStaticQuiz]);
+    if (isStaticQuiz || !isDynamicQuiz) return;
+    fetchDynamicQuiz(quizId)
+      .then((q: Quiz) => setDynamicQuiz(q))
+      .catch((e: Error) => setLoadError(e.message ?? "Failed to load quiz"));
+  }, [isStaticQuiz, isDynamicQuiz, quizId]);
 
   // Bootstrap state once dynamic quiz arrives
   useEffect(() => {
@@ -344,7 +406,11 @@ export default function QuizPage() {
     router.push(`/quiz/${quizId}/results?${query.toString()}`);
   }
 
-  const diff = DIFFICULTY_COLOR[quiz?.difficulty ?? "Medium"];
+  const diff        = DIFFICULTY_COLOR[quiz?.difficulty ?? "Medium"];
+  const isFlagsQuiz = quiz?.category === "Flags";
+  const dynConfig   = DYNAMIC_QUIZ_CONFIG[quizId];
+  const imgClass    = isFlagsQuiz ? "flag-img" : "team-logo";
+  const imgAlt      = dynConfig?.imageAlt ?? "Image";
 
   // ── Shared styles ──────────────────────────────────────────────────────────
   const sharedStyles = `
@@ -445,12 +511,16 @@ export default function QuizPage() {
           border: 1px solid #E5E3DC; animation: slideIn 0.25s ease;
         }
 
-        /* Flag image */
+        /* Flag / team images */
         .flag-img {
           display: block; width: 100%; max-width: 280px; height: auto;
           margin: 0 auto 1.25rem; border-radius: 10px;
           border: 1px solid #E5E3DC;
           box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+        }
+        .team-logo {
+          display: block; width: auto; max-width: 160px; max-height: 140px;
+          margin: 0 auto 1.25rem; object-fit: contain;
         }
 
         .question-text {
@@ -583,17 +653,16 @@ export default function QuizPage() {
         {/* ── Question card ── */}
         {question && (
           <div className="question-card" key={question.id}>
-            {/* Flag image (shown before question text for image-based questions) */}
             {question.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={question.imageUrl}
-                alt="Flag to identify"
-                className="flag-img"
+                alt={imgAlt}
+                className={imgClass}
               />
             )}
 
-            <p className={`question-text${question.imageUrl ? " flag-q" : ""}`}>
+            <p className={`question-text${question.imageUrl && isFlagsQuiz ? " flag-q" : ""}`}>
               {question.text}
             </p>
 

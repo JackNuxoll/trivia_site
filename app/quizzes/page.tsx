@@ -17,7 +17,11 @@ interface QuizSummary {
 
 // ── Quiz catalogue ────────────────────────────────────────────────────────────
 const ALL_QUIZZES: QuizSummary[] = [
-  { id: "flags",               title: "World Flags",             category: "Geography",   difficulty: "Medium", questions: 10, plays: 0,    isNew: true },
+  { id: "flags",               title: "World Flags",             category: "Geography",   difficulty: "Medium", questions: 10, plays: 0,    isNew: true  },
+  { id: "nfl-divisions",       title: "NFL Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
+  { id: "mlb-divisions",       title: "MLB Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
+  { id: "nba-divisions",       title: "NBA Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
+  { id: "ncaa-conferences",    title: "NCAA Conferences",        category: "Sports",      difficulty: "Hard",   questions: 6,  plays: 0,    isNew: true  },
   { id: "history-ww2",         title: "World War II",            category: "History",     difficulty: "Medium", questions: 15, plays: 1240 },
   { id: "science-space",       title: "Space Exploration",       category: "Science",     difficulty: "Hard",   questions: 12, plays: 980  },
   { id: "geo-capitals",        title: "World Capitals",          category: "Geography",   difficulty: "Easy",   questions: 20, plays: 2310 },
