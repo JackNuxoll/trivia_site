@@ -179,6 +179,14 @@ const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
     secondsPerQuestion: 20,
     imageAlt: "NCAA team logo",
   },
+  "us-state-capitals": {
+    category: "US State Capitals",
+    title: "US State Capitals",
+    difficulty: "Medium",
+    questionsPerSession: 10,
+    secondsPerQuestion: 15,
+    imageAlt: "US state capital",
+  },
 };
 
 // ── Fetch dynamic quiz from Supabase ──────────────────────────────────────────

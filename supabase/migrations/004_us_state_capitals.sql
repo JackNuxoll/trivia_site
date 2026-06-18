@@ -1,0 +1,60 @@
+-- ============================================================
+-- Migration 004 — US State Capitals Quiz
+-- 50 questions, one per US state
+-- Safe to re-run: uses ON CONFLICT DO NOTHING
+-- Run in Supabase Dashboard → SQL Editor
+-- ============================================================
+
+INSERT INTO public.questions (body, correct_answer, category, difficulty, image_url, wrong_answers, explanation)
+VALUES
+('What is the capital of Alabama?', 'Montgomery', 'US State Capitals', 2, NULL, ARRAY['Birmingham', 'Huntsville', 'Mobile'], 'Montgomery has been Alabama''s capital since 1846. Birmingham is the state''s largest city.'),
+('What is the capital of Alaska?', 'Juneau', 'US State Capitals', 2, NULL, ARRAY['Anchorage', 'Fairbanks', 'Sitka'], 'Juneau is Alaska''s capital and can only be reached by air or sea — no roads connect it to the rest of North America.'),
+('What is the capital of Arizona?', 'Phoenix', 'US State Capitals', 2, NULL, ARRAY['Tucson', 'Scottsdale', 'Mesa'], 'Phoenix became Arizona''s capital in 1889, two decades before Arizona achieved statehood in 1912.'),
+('What is the capital of Arkansas?', 'Little Rock', 'US State Capitals', 2, NULL, ARRAY['Fort Smith', 'Fayetteville', 'Jonesboro'], 'Little Rock sits on the Arkansas River and has been the state capital since Arkansas joined the Union in 1836.'),
+('What is the capital of California?', 'Sacramento', 'US State Capitals', 2, NULL, ARRAY['Los Angeles', 'San Francisco', 'San Diego'], 'Sacramento became California''s permanent capital in 1854. Los Angeles is far larger but was never the capital.'),
+('What is the capital of Colorado?', 'Denver', 'US State Capitals', 2, NULL, ARRAY['Colorado Springs', 'Aurora', 'Boulder'], 'Denver was founded during the Pikes Peak Gold Rush and became Colorado''s capital when the state was admitted in 1876.'),
+('What is the capital of Connecticut?', 'Hartford', 'US State Capitals', 2, NULL, ARRAY['New Haven', 'Bridgeport', 'Stamford'], 'Hartford has been Connecticut''s sole capital since 1875; before that it shared the role with New Haven.'),
+('What is the capital of Delaware?', 'Dover', 'US State Capitals', 2, NULL, ARRAY['Wilmington', 'Newark', 'Middletown'], 'Dover replaced New Castle as Delaware''s capital in 1777 because of its more central location.'),
+('What is the capital of Florida?', 'Tallahassee', 'US State Capitals', 2, NULL, ARRAY['Miami', 'Jacksonville', 'Orlando'], 'Tallahassee was chosen as Florida''s capital in 1824 as a compromise between St. Augustine and Pensacola.'),
+('What is the capital of Georgia?', 'Atlanta', 'US State Capitals', 2, NULL, ARRAY['Savannah', 'Augusta', 'Columbus'], 'Atlanta became Georgia''s permanent capital in 1868 after the Civil War. It replaced Milledgeville.'),
+('What is the capital of Hawaii?', 'Honolulu', 'US State Capitals', 2, NULL, ARRAY['Hilo', 'Kailua', 'Pearl City'], 'Honolulu, on the island of Oahu, is the capital and largest city of Hawaii, the 50th state.'),
+('What is the capital of Idaho?', 'Boise', 'US State Capitals', 2, NULL, ARRAY['Nampa', 'Meridian', 'Idaho Falls'], 'Boise became Idaho''s territorial capital in 1865 and remained the capital when Idaho achieved statehood in 1890.'),
+('What is the capital of Illinois?', 'Springfield', 'US State Capitals', 2, NULL, ARRAY['Chicago', 'Aurora', 'Rockford'], 'Springfield has been Illinois''s capital since 1837. It is famously the hometown of Abraham Lincoln.'),
+('What is the capital of Indiana?', 'Indianapolis', 'US State Capitals', 2, NULL, ARRAY['Fort Wayne', 'Evansville', 'South Bend'], 'Indianapolis was purpose-built as Indiana''s capital and has served in that role since 1825.'),
+('What is the capital of Iowa?', 'Des Moines', 'US State Capitals', 2, NULL, ARRAY['Cedar Rapids', 'Davenport', 'Sioux City'], 'Des Moines became Iowa''s permanent capital in 1857, replacing Iowa City.'),
+('What is the capital of Kansas?', 'Topeka', 'US State Capitals', 2, NULL, ARRAY['Wichita', 'Overland Park', 'Kansas City'], 'Topeka has been Kansas''s capital since the state''s admission to the Union in 1861.'),
+('What is the capital of Kentucky?', 'Frankfort', 'US State Capitals', 2, NULL, ARRAY['Louisville', 'Lexington', 'Bowling Green'], 'Frankfort is one of the smallest US state capitals. Louisville is far larger but was never the capital.'),
+('What is the capital of Louisiana?', 'Baton Rouge', 'US State Capitals', 2, NULL, ARRAY['New Orleans', 'Shreveport', 'Lafayette'], 'Baton Rouge replaced New Orleans as Louisiana''s capital in 1849 to move government away from the flood-prone delta.'),
+('What is the capital of Maine?', 'Augusta', 'US State Capitals', 2, NULL, ARRAY['Portland', 'Lewiston', 'Bangor'], 'Augusta has been Maine''s capital since 1832. Portland is larger but Augusta''s central location won the day.'),
+('What is the capital of Maryland?', 'Annapolis', 'US State Capitals', 2, NULL, ARRAY['Baltimore', 'Frederick', 'Rockville'], 'Annapolis has been Maryland''s capital since 1694 and is also home to the United States Naval Academy.'),
+('What is the capital of Massachusetts?', 'Boston', 'US State Capitals', 2, NULL, ARRAY['Worcester', 'Springfield', 'Cambridge'], 'Boston is both the capital and largest city of Massachusetts and one of the oldest cities in the United States.'),
+('What is the capital of Michigan?', 'Lansing', 'US State Capitals', 2, NULL, ARRAY['Detroit', 'Grand Rapids', 'Warren'], 'Lansing replaced Detroit as Michigan''s capital in 1847 to move government away from the border with Canada.'),
+('What is the capital of Minnesota?', 'Saint Paul', 'US State Capitals', 2, NULL, ARRAY['Minneapolis', 'Rochester', 'Duluth'], 'Saint Paul is the capital of Minnesota. It and Minneapolis form the Twin Cities metropolitan area.'),
+('What is the capital of Mississippi?', 'Jackson', 'US State Capitals', 2, NULL, ARRAY['Gulfport', 'Biloxi', 'Hattiesburg'], 'Jackson has been Mississippi''s capital since 1822 and is named after President Andrew Jackson.'),
+('What is the capital of Missouri?', 'Jefferson City', 'US State Capitals', 2, NULL, ARRAY['Kansas City', 'Saint Louis', 'Springfield'], 'Jefferson City is named after Thomas Jefferson and has been Missouri''s capital since 1826.'),
+('What is the capital of Montana?', 'Helena', 'US State Capitals', 2, NULL, ARRAY['Billings', 'Missoula', 'Great Falls'], 'Helena was founded during the Last Chance Gulch gold rush and has been Montana''s capital since 1875.'),
+('What is the capital of Nebraska?', 'Lincoln', 'US State Capitals', 2, NULL, ARRAY['Omaha', 'Bellevue', 'Grand Island'], 'Lincoln replaced Omaha as Nebraska''s capital in 1867 and was named in honor of President Abraham Lincoln.'),
+('What is the capital of Nevada?', 'Carson City', 'US State Capitals', 2, NULL, ARRAY['Las Vegas', 'Reno', 'Henderson'], 'Carson City has been Nevada''s capital since statehood in 1864. Las Vegas is far larger but became prominent later.'),
+('What is the capital of New Hampshire?', 'Concord', 'US State Capitals', 2, NULL, ARRAY['Manchester', 'Nashua', 'Dover'], 'Concord has been New Hampshire''s capital since 1808. Manchester is the state''s largest city.'),
+('What is the capital of New Jersey?', 'Trenton', 'US State Capitals', 2, NULL, ARRAY['Newark', 'Jersey City', 'Paterson'], 'Trenton has been New Jersey''s capital since 1790. It sits on the Delaware River across from Pennsylvania.'),
+('What is the capital of New Mexico?', 'Santa Fe', 'US State Capitals', 2, NULL, ARRAY['Albuquerque', 'Las Cruces', 'Rio Rancho'], 'Santa Fe is the oldest capital city in the US, founded in 1610. Albuquerque is far larger.'),
+('What is the capital of New York?', 'Albany', 'US State Capitals', 2, NULL, ARRAY['New York City', 'Buffalo', 'Rochester'], 'Albany has been New York''s capital since 1797. New York City is the largest city but not the capital.'),
+('What is the capital of North Carolina?', 'Raleigh', 'US State Capitals', 2, NULL, ARRAY['Charlotte', 'Greensboro', 'Durham'], 'Raleigh has been North Carolina''s capital since 1792 and is named after Sir Walter Raleigh.'),
+('What is the capital of North Dakota?', 'Bismarck', 'US State Capitals', 2, NULL, ARRAY['Fargo', 'Grand Forks', 'Minot'], 'Bismarck became North Dakota''s capital in 1883. It is named after German Chancellor Otto von Bismarck.'),
+('What is the capital of Ohio?', 'Columbus', 'US State Capitals', 2, NULL, ARRAY['Cleveland', 'Cincinnati', 'Toledo'], 'Columbus became Ohio''s permanent capital in 1816 and is named after explorer Christopher Columbus.'),
+('What is the capital of Oklahoma?', 'Oklahoma City', 'US State Capitals', 2, NULL, ARRAY['Tulsa', 'Norman', 'Broken Arrow'], 'Oklahoma City has been the capital since Oklahoma''s statehood in 1907 and sits atop major oil reserves.'),
+('What is the capital of Oregon?', 'Salem', 'US State Capitals', 2, NULL, ARRAY['Portland', 'Eugene', 'Gresham'], 'Salem has been Oregon''s capital since 1851. Portland is the state''s largest city.'),
+('What is the capital of Pennsylvania?', 'Harrisburg', 'US State Capitals', 2, NULL, ARRAY['Philadelphia', 'Pittsburgh', 'Allentown'], 'Harrisburg replaced Lancaster as Pennsylvania''s capital in 1812. Philadelphia is far larger.'),
+('What is the capital of Rhode Island?', 'Providence', 'US State Capitals', 2, NULL, ARRAY['Cranston', 'Warwick', 'Pawtucket'], 'Providence has been Rhode Island''s capital since 1900, ending a long arrangement shared with Newport.'),
+('What is the capital of South Carolina?', 'Columbia', 'US State Capitals', 2, NULL, ARRAY['Charleston', 'North Charleston', 'Mount Pleasant'], 'Columbia became South Carolina''s capital in 1786, replacing Charleston to move government inland.'),
+('What is the capital of South Dakota?', 'Pierre', 'US State Capitals', 2, NULL, ARRAY['Sioux Falls', 'Rapid City', 'Aberdeen'], 'Pierre (pronounced Pier) is one of the least populous state capitals and sits on the Missouri River.'),
+('What is the capital of Tennessee?', 'Nashville', 'US State Capitals', 2, NULL, ARRAY['Memphis', 'Knoxville', 'Chattanooga'], 'Nashville has been Tennessee''s capital since 1826 and is famously known as Music City, USA.'),
+('What is the capital of Texas?', 'Austin', 'US State Capitals', 2, NULL, ARRAY['Houston', 'San Antonio', 'Dallas'], 'Austin has been Texas''s capital since 1839 and is named after Stephen F. Austin, the Father of Texas.'),
+('What is the capital of Utah?', 'Salt Lake City', 'US State Capitals', 2, NULL, ARRAY['West Valley City', 'Provo', 'West Jordan'], 'Salt Lake City has been Utah''s capital since territorial days and is the headquarters of the LDS Church.'),
+('What is the capital of Vermont?', 'Montpelier', 'US State Capitals', 2, NULL, ARRAY['Burlington', 'Essex', 'South Burlington'], 'Montpelier is the smallest US state capital by population, with fewer than 8,000 residents.'),
+('What is the capital of Virginia?', 'Richmond', 'US State Capitals', 2, NULL, ARRAY['Virginia Beach', 'Norfolk', 'Chesapeake'], 'Richmond has been Virginia''s capital since 1780. It also served as the capital of the Confederacy.'),
+('What is the capital of Washington?', 'Olympia', 'US State Capitals', 2, NULL, ARRAY['Seattle', 'Spokane', 'Tacoma'], 'Olympia has been Washington''s capital since territorial days. Seattle is far larger and more famous.'),
+('What is the capital of West Virginia?', 'Charleston', 'US State Capitals', 2, NULL, ARRAY['Huntington', 'Morgantown', 'Parkersburg'], 'Charleston has been West Virginia''s capital since 1885. The state itself was formed during the Civil War in 1863.'),
+('What is the capital of Wisconsin?', 'Madison', 'US State Capitals', 2, NULL, ARRAY['Milwaukee', 'Green Bay', 'Kenosha'], 'Madison has been Wisconsin''s capital since 1838 and is also home to the University of Wisconsin.'),
+('What is the capital of Wyoming?', 'Cheyenne', 'US State Capitals', 2, NULL, ARRAY['Casper', 'Laramie', 'Gillette'], 'Cheyenne has been Wyoming''s capital since territorial days and is known as the Magic City of the Plains.')
+ON CONFLICT DO NOTHING;
