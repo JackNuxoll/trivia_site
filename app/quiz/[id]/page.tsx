@@ -70,36 +70,6 @@ const SAMPLE_QUIZZES: Record<string, Quiz> = {
       },
     ],
   },
-  "history-ww2": {
-    id: "history-ww2",
-    title: "World War II",
-    category: "History",
-    difficulty: "Medium",
-    timeLimitSeconds: 90,
-    questions: [
-      {
-        id: "q1",
-        text: "In which year did World War II begin?",
-        answers: ["1937", "1938", "1939", "1940"],
-        correctIndex: 2,
-        explanation: "WWII began on September 1, 1939, when Nazi Germany invaded Poland, prompting Britain and France to declare war.",
-      },
-      {
-        id: "q2",
-        text: "What was the code name for the Allied invasion of Normandy on June 6, 1944?",
-        answers: ["Operation Overlord", "Operation Barbarossa", "Operation Market Garden", "Operation Torch"],
-        correctIndex: 0,
-        explanation: "Operation Overlord was the codename for the Battle of Normandy. The beach landings themselves were codenamed Operation Neptune.",
-      },
-      {
-        id: "q3",
-        text: "Which country suffered the highest number of casualties in World War II?",
-        answers: ["Germany", "United States", "Soviet Union", "China"],
-        correctIndex: 2,
-        explanation: "The Soviet Union suffered an estimated 26–27 million deaths, the most of any nation in the conflict.",
-      },
-    ],
-  },
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -186,6 +156,30 @@ const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
     questionsPerSession: 10,
     secondsPerQuestion: 15,
     imageAlt: "US state capital",
+  },
+  "wwii-battles": {
+    category: "WWII Battles",
+    title: "WWII: Key Battles",
+    difficulty: "Medium",
+    questionsPerSession: 10,
+    secondsPerQuestion: 20,
+    imageAlt: "WWII battle",
+  },
+  "wwii-leaders": {
+    category: "WWII Leaders",
+    title: "WWII: Leaders & Figures",
+    difficulty: "Medium",
+    questionsPerSession: 10,
+    secondsPerQuestion: 20,
+    imageAlt: "WWII leader",
+  },
+  "wwii-timeline": {
+    category: "WWII Timeline",
+    title: "WWII: Timeline & Milestones",
+    difficulty: "Easy",
+    questionsPerSession: 10,
+    secondsPerQuestion: 18,
+    imageAlt: "WWII milestone",
   },
 };
 
@@ -289,7 +283,11 @@ export default function QuizPage() {
 
   // Fetch dynamic quiz on mount
   useEffect(() => {
-    if (isStaticQuiz || !isDynamicQuiz) return;
+    if (isStaticQuiz) return;
+    if (!isDynamicQuiz) {
+      setLoadError(`Quiz not found. It may have been removed or the URL is incorrect.`);
+      return;
+    }
     fetchDynamicQuiz(quizId)
       .then((q: Quiz) => setDynamicQuiz(q))
       .catch((e: Error) => setLoadError(e.message ?? "Failed to load quiz"));

@@ -1,46 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import { supabase } from "@/lib/supabaseClient";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface QuizSummary {
-  id: string;
-  title: string;
-  category: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  questions: number;
-  plays: number;
-  isNew?: boolean;
-}
+// ── Quiz catalog: only quizzes backed by the questions table ──────────────────
+// dbCategory must match the `category` column value in public.questions.
+const QUIZ_CATALOG = [
+  { id: "flags",            title: "World Flags",          displayCategory: "Geography", dbCategory: "Flags",           difficulty: "Medium" },
+  { id: "us-state-capitals",title: "US State Capitals",    displayCategory: "Geography", dbCategory: "US State Capitals",difficulty: "Medium" },
+  { id: "nfl-divisions",    title: "NFL Divisions",        displayCategory: "Sports",    dbCategory: "NFL Divisions",   difficulty: "Medium" },
+  { id: "mlb-divisions",    title: "MLB Divisions",        displayCategory: "Sports",    dbCategory: "MLB Divisions",   difficulty: "Medium" },
+  { id: "nba-divisions",    title: "NBA Divisions",        displayCategory: "Sports",    dbCategory: "NBA Divisions",   difficulty: "Medium" },
+  { id: "ncaa-conferences", title: "NCAA Conferences",     displayCategory: "Sports",    dbCategory: "NCAA Conferences",difficulty: "Hard"   },
+  { id: "wwii-battles",   title: "WWII: Key Battles",           displayCategory: "History", dbCategory: "WWII Battles",  difficulty: "Medium" },
+  { id: "wwii-leaders",   title: "WWII: Leaders & Figures",     displayCategory: "History", dbCategory: "WWII Leaders",  difficulty: "Medium" },
+  { id: "wwii-timeline",  title: "WWII: Timeline & Milestones", displayCategory: "History", dbCategory: "WWII Timeline", difficulty: "Easy"   },
+] as const;
 
-// ── Quiz catalogue ────────────────────────────────────────────────────────────
-const ALL_QUIZZES: QuizSummary[] = [
-  { id: "flags",               title: "World Flags",             category: "Geography",   difficulty: "Medium", questions: 10, plays: 0,    isNew: true  },
-  { id: "us-state-capitals",  title: "US State Capitals",       category: "Geography",   difficulty: "Medium", questions: 10, plays: 0,    isNew: true  },
-  { id: "nfl-divisions",       title: "NFL Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
-  { id: "mlb-divisions",       title: "MLB Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
-  { id: "nba-divisions",       title: "NBA Divisions",           category: "Sports",      difficulty: "Medium", questions: 6,  plays: 0,    isNew: true  },
-  { id: "ncaa-conferences",    title: "NCAA Conferences",        category: "Sports",      difficulty: "Hard",   questions: 6,  plays: 0,    isNew: true  },
-  { id: "history-ww2",         title: "World War II",            category: "History",     difficulty: "Medium", questions: 15, plays: 1240 },
-  { id: "science-space",       title: "Space Exploration",       category: "Science",     difficulty: "Hard",   questions: 12, plays: 980  },
-  { id: "geo-capitals",        title: "World Capitals",          category: "Geography",   difficulty: "Easy",   questions: 20, plays: 2310 },
-  { id: "pop-culture-90",      title: "90s Nostalgia",           category: "Pop Culture", difficulty: "Easy",   questions: 10, plays: 3100 },
-  { id: "science-bio",         title: "Human Biology",           category: "Science",     difficulty: "Hard",   questions: 18, plays: 760  },
-  { id: "history-ancient",     title: "Ancient Civilizations",   category: "History",     difficulty: "Medium", questions: 14, plays: 890  },
-  { id: "sports-olympics",     title: "Olympic History",         category: "Sports",      difficulty: "Medium", questions: 16, plays: 540  },
-  { id: "science-chem",        title: "Chemistry Basics",        category: "Science",     difficulty: "Easy",   questions: 12, plays: 1100 },
-  { id: "history-us",          title: "U.S. Presidents",         category: "History",     difficulty: "Easy",   questions: 20, plays: 1980 },
-  { id: "pop-culture-movies",  title: "Movie Trivia",            category: "Pop Culture", difficulty: "Medium", questions: 18, plays: 2750 },
-  { id: "sports-football",     title: "Football Legends",        category: "Sports",      difficulty: "Hard",   questions: 14, plays: 690  },
-  { id: "geo-landmarks",       title: "Famous Landmarks",        category: "Geography",   difficulty: "Easy",   questions: 15, plays: 1340 },
-  { id: "science-physics",     title: "Physics Fundamentals",    category: "Science",     difficulty: "Hard",   questions: 10, plays: 430  },
-  { id: "tech-internet",       title: "History of the Internet", category: "Technology",  difficulty: "Medium", questions: 12, plays: 870  },
-];
-
-const CATEGORIES  = ["All", "History", "Science", "Geography", "Pop Culture", "Sports", "Technology"];
-const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"] as const;
+type Quiz = typeof QUIZ_CATALOG[number] & { questionCount: number; plays: number };
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; color: string }> = {
   Easy:   { bg: "#DCFCE7", color: "#166534" },
@@ -49,25 +28,70 @@ const DIFFICULTY_COLOR: Record<string, { bg: string; color: string }> = {
 };
 
 const CATEGORY_ICON: Record<string, string> = {
-  History: "🏛", Science: "🔬", Geography: "🌍",
-  "Pop Culture": "🎬", Sports: "🏆", Technology: "💻",
+  Geography: "🌍", Sports: "🏆", History: "🏛", Science: "🔬",
+  "Pop Culture": "🎬", Technology: "💻",
 };
+
+const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"] as const;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function QuizzesPage() {
+  const [quizzes,    setQuizzes]    = useState<Quiz[]>([]);
+  const [loading,    setLoading]    = useState(true);
   const [search,     setSearch]     = useState("");
   const [category,   setCategory]   = useState("All");
   const [difficulty, setDifficulty] = useState<typeof DIFFICULTIES[number]>("All");
 
+  useEffect(() => {
+    async function load() {
+      // Fetch question counts per category and play counts in parallel
+      const [{ data: qData }, { data: lb }] = await Promise.all([
+        supabase.from("questions").select("category"),
+        supabase.rpc("get_leaderboard_by_quiz"),
+      ]);
+
+      // Count questions per dbCategory
+      const categoryCounts: Record<string, number> = {};
+      for (const row of qData ?? []) {
+        categoryCounts[row.category] = (categoryCounts[row.category] ?? 0) + 1;
+      }
+
+      // Sum sessions played per quiz_id
+      const playCounts: Record<string, number> = {};
+      for (const row of lb ?? []) {
+        playCounts[row.quiz_id] = (playCounts[row.quiz_id] ?? 0) + Number(row.sessions_played);
+      }
+
+      // Build quiz list — only include entries that have questions in the DB
+      const live: Quiz[] = QUIZ_CATALOG
+        .filter((q) => (categoryCounts[q.dbCategory] ?? 0) > 0)
+        .map((q) => ({
+          ...q,
+          questionCount: categoryCounts[q.dbCategory] ?? 0,
+          plays: playCounts[q.id] ?? 0,
+        }));
+
+      setQuizzes(live);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  // Derive available categories from the live quiz list
+  const availableCategories = useMemo(() => {
+    const cats = [...new Set(quizzes.map((q) => q.displayCategory))].sort();
+    return ["All", ...cats];
+  }, [quizzes]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return ALL_QUIZZES.filter((quiz) => {
-      if (category !== "All" && quiz.category !== category) return false;
+    return quizzes.filter((quiz) => {
+      if (category !== "All" && quiz.displayCategory !== category) return false;
       if (difficulty !== "All" && quiz.difficulty !== difficulty) return false;
       if (q && !quiz.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [search, category, difficulty]);
+  }, [quizzes, search, category, difficulty]);
 
   const hasFilters = category !== "All" || difficulty !== "All" || search.trim() !== "";
 
@@ -82,6 +106,9 @@ export default function QuizzesPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        @keyframes shimmer { from{background-position:-400px 0} to{background-position:400px 0} }
+        @keyframes cardIn  { from{opacity:0;transform:translateY(8px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
 
         .b-shell {
           max-width: 1100px; margin: 0 auto;
@@ -118,6 +145,7 @@ export default function QuizzesPage() {
         .pill:hover { border-color: #4F46E5; color: #4F46E5; }
         .pill.active { background: #4F46E5; border-color: #4F46E5; color: #fff; }
         .pill.active:hover { background: #4338CA; }
+        .pill-skeleton { height: 36px; border-radius: 99px; background: linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%); background-size: 400px 100%; animation: shimmer 1.4s infinite; }
 
         /* Results bar */
         .results-bar {
@@ -136,15 +164,14 @@ export default function QuizzesPage() {
           grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
           gap: 16px;
         }
+        .card-skeleton { height: 110px; border-radius: 14px; background: linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%); background-size: 400px 100%; animation: shimmer 1.4s infinite; }
 
-        @keyframes cardIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .quiz-card {
           background: #fff; border-radius: 14px;
           border: 1px solid #E5E3DC; padding: 1.25rem 1.5rem;
           text-decoration: none; display: block;
           transition: transform 0.15s, box-shadow 0.15s;
           animation: cardIn 0.3s ease both;
-          position: relative;
         }
         .quiz-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(26,26,46,0.08); }
 
@@ -155,16 +182,6 @@ export default function QuizzesPage() {
         .quiz-card-title { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 600; color: #1A1A2E; margin-bottom: 0.5rem; line-height: 1.4; }
         .quiz-card-meta { font-size: 12px; color: #9CA3AF; display: flex; gap: 12px; align-items: center; }
 
-        /* NEW badge */
-        .new-badge {
-          position: absolute; top: -1px; right: 14px;
-          background: #4F46E5; color: #fff;
-          font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
-          text-transform: uppercase; padding: 3px 8px;
-          border-radius: 0 0 8px 8px;
-        }
-
-        /* Random tag */
         .random-tag {
           display: inline-flex; align-items: center; gap: 4px;
           font-size: 11px; font-weight: 600; color: #7C3AED;
@@ -178,7 +195,7 @@ export default function QuizzesPage() {
         }
         .empty-title { font-family: 'Sora', sans-serif; font-size: 1.1rem; font-weight: 600; color: #1A1A2E; margin-bottom: 0.5rem; }
         .empty-body { font-size: 14px; color: #9CA3AF; margin-bottom: 1.25rem; }
-        .empty-btn { display: inline-block; padding: 10px 24px; border-radius: 10px; background: #4F46E5; color: #fff; font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: 'Inter', sans-serif; }
+        .empty-btn { display: inline-block; padding: 10px 24px; border-radius: 10px; background: #4F46E5; color: #fff; font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: 'Inter', sans-serif; text-decoration: none; }
         .empty-btn:hover { background: #4338CA; }
       `}</style>
 
@@ -210,11 +227,14 @@ export default function QuizzesPage() {
         <div className="filter-group">
           <span className="filter-label">Category</span>
           <div className="pill-row">
-            {CATEGORIES.map((c) => (
-              <button key={c} className={`pill${category === c ? " active" : ""}`} onClick={() => setCategory(c)}>
-                {c !== "All" && CATEGORY_ICON[c]} {c}
-              </button>
-            ))}
+            {loading
+              ? [80, 90, 70, 100].map((w, i) => <div key={i} className="pill-skeleton" style={{ width: w }} />)
+              : availableCategories.map((c) => (
+                  <button key={c} className={`pill${category === c ? " active" : ""}`} onClick={() => setCategory(c)}>
+                    {c !== "All" && CATEGORY_ICON[c]} {c}
+                  </button>
+                ))
+            }
           </div>
         </div>
 
@@ -233,15 +253,24 @@ export default function QuizzesPage() {
         {/* ── Results bar ── */}
         <div className="results-bar">
           <div className="results-count">
-            <strong>{filtered.length}</strong> {filtered.length === 1 ? "quiz" : "quizzes"} found
+            {loading
+              ? <span>Loading quizzes…</span>
+              : <><strong>{filtered.length}</strong> {filtered.length === 1 ? "quiz" : "quizzes"} found</>
+            }
           </div>
-          {hasFilters && (
+          {hasFilters && !loading && (
             <button className="clear-btn" onClick={clearFilters}>Clear filters</button>
           )}
         </div>
 
-        {/* ── Grid or empty state ── */}
-        {filtered.length > 0 ? (
+        {/* ── Grid ── */}
+        {loading ? (
+          <div className="quiz-grid">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="card-skeleton" style={{ animationDelay: `${i * 60}ms` }} />
+            ))}
+          </div>
+        ) : filtered.length > 0 ? (
           <div className="quiz-grid">
             {filtered.map((quiz, idx) => {
               const diff = DIFFICULTY_COLOR[quiz.difficulty];
@@ -252,11 +281,9 @@ export default function QuizzesPage() {
                   className="quiz-card"
                   style={{ animationDelay: `${idx * 30}ms` }}
                 >
-                  {quiz.isNew && <span className="new-badge">New</span>}
-
                   <div className="quiz-card-top">
                     <span className="category-pill">
-                      {CATEGORY_ICON[quiz.category]} {quiz.category}
+                      {CATEGORY_ICON[quiz.displayCategory]} {quiz.displayCategory}
                     </span>
                     <span className="difficulty-pill" style={{ background: diff.bg, color: diff.color }}>
                       {quiz.difficulty}
@@ -266,12 +293,11 @@ export default function QuizzesPage() {
                   <p className="quiz-card-title">{quiz.title}</p>
 
                   <div className="quiz-card-meta">
-                    <span>{quiz.questions} questions</span>
-                    {quiz.isNew ? (
-                      <span className="random-tag">🎲 Random each time</span>
-                    ) : (
-                      <span>{quiz.plays.toLocaleString()} plays</span>
-                    )}
+                    <span>{quiz.questionCount} questions</span>
+                    {quiz.plays > 0
+                      ? <span>{quiz.plays.toLocaleString()} {quiz.plays === 1 ? "play" : "plays"}</span>
+                      : <span className="random-tag">🎲 Random each time</span>
+                    }
                   </div>
                 </Link>
               );
@@ -279,9 +305,18 @@ export default function QuizzesPage() {
           </div>
         ) : (
           <div className="empty-state">
-            <div className="empty-title">No quizzes match those filters</div>
-            <div className="empty-body">Try a different category, difficulty, or search term.</div>
-            <button className="empty-btn" onClick={clearFilters}>Clear filters</button>
+            {hasFilters ? (
+              <>
+                <div className="empty-title">No quizzes match those filters</div>
+                <div className="empty-body">Try a different category, difficulty, or search term.</div>
+                <button className="empty-btn" onClick={clearFilters}>Clear filters</button>
+              </>
+            ) : (
+              <>
+                <div className="empty-title">No quizzes available yet</div>
+                <div className="empty-body">Check back soon — new content is added regularly.</div>
+              </>
+            )}
           </div>
         )}
 

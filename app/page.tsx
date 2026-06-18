@@ -4,22 +4,33 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import { useAuth } from "@/lib/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 
-// ── Sample data (replace with your JSON / DB queries later) ──────────────────
-const FEATURED_QUIZZES = [
-  { id: "nfl-divisions",    category: "Sports",      title: "NFL Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
-  { id: "mlb-divisions",    category: "Sports",      title: "MLB Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
-  { id: "nba-divisions",    category: "Sports",      title: "NBA Divisions",       questions: 6,  difficulty: "Medium", plays: 0,    isNew: true },
-  { id: "ncaa-conferences", category: "Sports",      title: "NCAA Conferences",    questions: 6,  difficulty: "Hard",   plays: 0,    isNew: true },
-  { id: "flags",            category: "Geography",   title: "World Flags",         questions: 10, difficulty: "Medium", plays: 0    },
-  { id: "history-ww2",      category: "History",     title: "World War II",        questions: 15, difficulty: "Medium", plays: 1240 },
-];
+const QUIZ_NAMES: Record<string, string> = {
+  "flags":              "World Flags",
+  "us-state-capitals":  "US State Capitals",
+  "history-ww2":        "World War II",
+  "science-space":      "Space Exploration",
+  "nfl-divisions":      "NFL Divisions",
+  "mlb-divisions":      "MLB Divisions",
+  "nba-divisions":      "NBA Divisions",
+  "ncaa-conferences":   "NCAA Conferences",
+  "geo-capitals":       "World Capitals",
+  "pop-culture-90":     "90s Nostalgia",
+  "science-bio":        "Human Biology",
+  "history-ancient":    "Ancient Civilizations",
+  "sports-olympics":    "Olympic History",
+  "science-chem":       "Chemistry Basics",
+  "history-us":         "U.S. Presidents",
+  "pop-culture-movies": "Movie Trivia",
+  "sports-football":    "Football Legends",
+  "geo-landmarks":      "Famous Landmarks",
+  "science-physics":    "Physics Fundamentals",
+  "tech-internet":      "History of the Internet",
+};
 
-const STATS = [
-  { value: "12,000+", label: "Questions" },
-  { value: "340+",    label: "Quizzes"   },
-  { value: "8",       label: "Categories"},
-];
+interface TopQuiz { quiz_id: string; total_plays: number; }
+interface LiveStats { questions: number; categories: number; plays: number; }
 
 // Animated hero question preview ──────────────────────────────────────────────
 const SAMPLE_QUESTION = {
@@ -28,18 +39,15 @@ const SAMPLE_QUESTION = {
   correct: 2, // Saturn
 };
 
-const DIFFICULTY_STYLES: Record<string, { bg: string; color: string }> = {
-  Easy:   { bg: "#DCFCE7", color: "#166534" },
-  Medium: { bg: "#FEF9C3", color: "#854D0E" },
-  Hard:   { bg: "#FEE2E2", color: "#991B1B" },
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [selected, setSelected] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [selected,     setSelected]     = useState<number | null>(null);
+  const [revealed,     setRevealed]     = useState(false);
+  const [liveStats,    setLiveStats]    = useState<LiveStats | null>(null);
+  const [topQuizzes,   setTopQuizzes]   = useState<TopQuiz[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Auto-reset the sample question every 6 seconds
   useEffect(() => {
@@ -48,6 +56,36 @@ export default function HomePage() {
       setRevealed(false);
     }, 6000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Fetch live stats and most-played quizzes
+  useEffect(() => {
+    async function load() {
+      const [{ data: qData }, { data: lb }] = await Promise.all([
+        supabase.from("questions").select("category"),
+        supabase.rpc("get_leaderboard_by_quiz"),
+      ]);
+
+      const questionCount  = qData?.length ?? 0;
+      const categoryCount  = new Set(qData?.map((r) => r.category)).size;
+
+      const quizMap: Record<string, number> = {};
+      let totalPlays = 0;
+      for (const row of lb ?? []) {
+        quizMap[row.quiz_id] = (quizMap[row.quiz_id] ?? 0) + Number(row.sessions_played);
+        totalPlays += Number(row.sessions_played);
+      }
+
+      setLiveStats({ questions: questionCount, categories: categoryCount, plays: totalPlays });
+      setTopQuizzes(
+        Object.entries(quizMap)
+          .map(([quiz_id, total_plays]) => ({ quiz_id, total_plays }))
+          .sort((a, b) => b.total_plays - a.total_plays)
+          .slice(0, 6)
+      );
+      setStatsLoading(false);
+    }
+    load();
   }, []);
 
   function handleAnswer(idx: number) {
@@ -64,6 +102,7 @@ export default function HomePage() {
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes shimmer { from{background-position:-400px 0} to{background-position:400px 0} }
 
         .display { font-family: 'Sora', sans-serif; }
 
@@ -247,43 +286,62 @@ export default function HomePage() {
 
       {/* ── Stats strip ── */}
       <div className="stats-strip">
-        {STATS.map((s) => (
-          <div key={s.label} className="stat">
-            <div className="stat-value display">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
-        ))}
+        {statsLoading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="stat">
+              <div style={{ height: 36, width: 80, borderRadius: 8, background: "linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%)", backgroundSize: "400px 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ height: 13, width: 60, marginTop: 6, borderRadius: 6, background: "linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%)", backgroundSize: "400px 100%", animation: "shimmer 1.4s infinite" }} />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="stat">
+              <div className="stat-value display">{liveStats?.questions.toLocaleString() ?? "—"}</div>
+              <div className="stat-label">Questions</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value display">{liveStats?.categories ?? "—"}</div>
+              <div className="stat-label">Categories</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value display">{liveStats?.plays.toLocaleString() ?? "—"}</div>
+              <div className="stat-label">Quizzes played</div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ── Featured quizzes ── */}
+      {/* ── Most played quizzes ── */}
       <section className="section">
         <div className="section-header">
-          <h2 className="section-title display">Featured quizzes</h2>
+          <h2 className="section-title display">Most played</h2>
           <Link href="/quizzes" className="section-link">View all →</Link>
         </div>
-        <div className="quiz-grid">
-          {FEATURED_QUIZZES.map((quiz) => {
-            const diff = DIFFICULTY_STYLES[quiz.difficulty];
-            return (
-              <Link key={quiz.id} href={`/quiz/${quiz.id}`} className="quiz-card">
-                <div className="quiz-card-top">
-                  <span className="category-pill">{quiz.category}</span>
-                  <span
-                    className="difficulty-pill"
-                    style={{ background: diff.bg, color: diff.color }}
-                  >
-                    {quiz.difficulty}
-                  </span>
-                </div>
-                <p className="quiz-card-title">{quiz.title}</p>
+
+        {statsLoading ? (
+          <div className="quiz-grid">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} style={{ height: 100, borderRadius: 14, background: "linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%)", backgroundSize: "400px 100%", animation: "shimmer 1.4s infinite" }} />
+            ))}
+          </div>
+        ) : topQuizzes.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#9CA3AF" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#1A1A2E", marginBottom: "0.5rem" }}>No quizzes played yet</div>
+            <div style={{ fontSize: 14, marginBottom: "1.25rem" }}>Be the first to set the leaderboard.</div>
+            <Link href="/quizzes" className="btn-primary" style={{ display: "inline-block" }}>Browse quizzes</Link>
+          </div>
+        ) : (
+          <div className="quiz-grid">
+            {topQuizzes.map((quiz) => (
+              <Link key={quiz.quiz_id} href={`/quiz/${quiz.quiz_id}`} className="quiz-card">
+                <p className="quiz-card-title">{QUIZ_NAMES[quiz.quiz_id] ?? quiz.quiz_id}</p>
                 <div className="quiz-card-meta">
-                  <span>{quiz.questions} questions</span>
-                  <span>{quiz.plays.toLocaleString()} plays</span>
+                  <span>{quiz.total_plays.toLocaleString()} {quiz.total_plays === 1 ? "play" : "plays"}</span>
                 </div>
               </Link>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── Footer ── */}

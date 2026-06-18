@@ -10,7 +10,7 @@ interface NavProps {
 }
 
 export default function Nav({ links = [] }: NavProps) {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, userProfile, signOut } = useAuth();
   const pathname = usePathname();
   const router   = useRouter();
 
@@ -21,6 +21,8 @@ export default function Nav({ links = [] }: NavProps) {
 
   // Build the sign-in href so we come back to the current page after login
   const loginHref = `/login?redirectTo=${encodeURIComponent(pathname)}`;
+
+  const displayName = userProfile?.display_name || user?.email?.split('@')[0] || user?.email;
 
   return (
     <>
@@ -55,6 +57,22 @@ export default function Nav({ links = [] }: NavProps) {
           white-space: nowrap;
         }
         @media (max-width: 520px) { .nav-email { display: none; } }
+
+        .nav-username {
+          font-size: 13px; color: #6B7280; font-weight: 500;
+          max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+          white-space: nowrap; text-decoration: none;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .nav-username:hover { color: #4F46E5; }
+        @media (max-width: 520px) { .nav-username { display: none; } }
+
+        .nav-team-badge {
+          font-size: 11px; font-weight: 600;
+          background: #EEF2FF; color: #4F46E5;
+          padding: 2px 8px; border-radius: 99px;
+          white-space: nowrap; flex-shrink: 0;
+        }
 
         .nav-cta {
           padding: 8px 20px; border-radius: 8px; background: #4F46E5;
@@ -93,7 +111,13 @@ export default function Nav({ links = [] }: NavProps) {
             <div className="nav-skeleton" />
           ) : user ? (
             <div className="nav-user">
-              <span className="nav-email">{user.email}</span>
+              <Link href="/profile" className="nav-username">
+                {displayName}
+                {userProfile?.team_name && (
+                  <span className="nav-team-badge">{userProfile.team_name}</span>
+                )}
+              </Link>
+              <Link href="/profile" className="nav-link">Profile</Link>
               <button className="nav-signout" onClick={handleSignOut}>Sign out</button>
             </div>
           ) : (

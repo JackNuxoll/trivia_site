@@ -4,24 +4,50 @@
 export interface Database {
   public: {
     Tables: {
+      teams: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+      };
       users: {
         Row: {
           id: string;
           email: string;
           display_name: string | null;
           created_at: string;
+          team_id: string | null;
         };
         Insert: {
           id?: string;
           email: string;
           display_name?: string | null;
           created_at?: string;
+          team_id?: string | null;
         };
         Update: {
           id?: string;
           email?: string;
           display_name?: string | null;
           created_at?: string;
+          team_id?: string | null;
         };
       };
       questions: {

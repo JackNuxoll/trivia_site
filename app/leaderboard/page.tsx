@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import Nav from "@/components/Nav";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -8,6 +9,8 @@ import { supabase } from "@/lib/supabaseClient";
 interface OverallEntry {
   user_id: string;
   username: string;
+  team_id: string | null;
+  team_name: string | null;
   sessions_played: number;
   questions_answered: number;
   questions_correct: number;
@@ -17,6 +20,16 @@ interface OverallEntry {
 interface QuizEntry extends OverallEntry {
   quiz_id: string;
   last_played: string;
+}
+
+interface TeamEntry {
+  team_id: string;
+  team_name: string;
+  member_count: number;
+  sessions_played: number;
+  questions_answered: number;
+  questions_correct: number;
+  accuracy_pct: number;
 }
 
 // ── Quiz ID → display name ────────────────────────────────────────────────────
@@ -82,13 +95,15 @@ function SkeletonRow() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function LeaderboardPage() {
-  const [tab,           setTab]           = useState<"overall" | "by-quiz">("overall");
+  const [tab,           setTab]           = useState<"overall" | "by-quiz" | "by-team">("overall");
   const [overall,       setOverall]       = useState<OverallEntry[]>([]);
   const [quizData,      setQuizData]      = useState<QuizEntry[]>([]);
+  const [teamData,      setTeamData]      = useState<TeamEntry[]>([]);
   const [selectedQuiz,  setSelectedQuiz]  = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loadingOverall, setLoadingOverall] = useState(true);
   const [loadingQuiz,    setLoadingQuiz]    = useState(false);
+  const [loadingTeam,    setLoadingTeam]    = useState(false);
   const [error,         setError]         = useState<string | null>(null);
 
   // ── Fetch overall on mount ──────────────────────────────────────────────────
@@ -118,6 +133,16 @@ export default function LeaderboardPage() {
       setLoadingQuiz(false);
     });
   }, [tab, quizData.length]);
+
+  // ── Fetch team leaderboard when tab switches ────────────────────────────────
+  useEffect(() => {
+    if (tab !== "by-team" || teamData.length > 0) return;
+    setLoadingTeam(true);
+    supabase.rpc("get_team_leaderboard").then(({ data, error }) => {
+      if (!error && data) setTeamData(data as TeamEntry[]);
+      setLoadingTeam(false);
+    });
+  }, [tab, teamData.length]);
 
   // ── Derived data ────────────────────────────────────────────────────────────
   const availableQuizzes = useMemo(() => {
@@ -198,6 +223,17 @@ export default function LeaderboardPage() {
         .user-name { font-weight:600; color:#1A1A2E; }
         .you-badge { font-size:10px; font-weight:700; background:#4F46E5; color:#fff; padding:1px 6px; border-radius:99px; letter-spacing:0.04em; }
 
+        /* ── Team link ── */
+        .team-link { font-size:13px; color:#4F46E5; font-weight:500; text-decoration:none; }
+        .team-link:hover { text-decoration:underline; }
+        .no-team { font-size:13px; color:#D1D5DB; }
+
+        /* ── Team cell (by-team tab) ── */
+        .team-cell { display:flex; align-items:center; gap:10px; }
+        .team-avatar { width:32px; height:32px; border-radius:8px; background:#E8E6FF; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#4F46E5; flex-shrink:0; font-family:'Sora',sans-serif; }
+        .team-name-link { font-weight:600; color:#1A1A2E; text-decoration:none; }
+        .team-name-link:hover { color:#4F46E5; text-decoration:underline; }
+
         /* ── Number cells ── */
         .num-cell { font-family:'Sora',sans-serif; font-weight:600; color:#1A1A2E; text-align:right; }
         .sub-num { font-size:11px; color:#9CA3AF; font-weight:400; }
@@ -250,6 +286,7 @@ export default function LeaderboardPage() {
         <div className="lb-tabs">
           <button className={`lb-tab${tab === "overall"  ? " active" : ""}`} onClick={() => setTab("overall")}>Overall</button>
           <button className={`lb-tab${tab === "by-quiz"  ? " active" : ""}`} onClick={() => setTab("by-quiz")}>By Quiz</button>
+          <button className={`lb-tab${tab === "by-team"  ? " active" : ""}`} onClick={() => setTab("by-team")}>By Team</button>
         </div>
 
         {/* ── Error ── */}
@@ -269,6 +306,7 @@ export default function LeaderboardPage() {
                 <tr>
                   <th style={{ width: 60 }}>Rank</th>
                   <th>Player</th>
+                  <th className="hide-sm">Team</th>
                   <th className="right hide-sm">Quizzes</th>
                   <th className="right hide-sm">Answered</th>
                   <th className="right hide-sm">Correct</th>
@@ -280,7 +318,7 @@ export default function LeaderboardPage() {
                   Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
                 ) : overall.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="lb-empty">
                         <div className="lb-empty-title">No data yet</div>
                         <div className="lb-empty-body">Complete a quiz to appear here.</div>
@@ -307,6 +345,12 @@ export default function LeaderboardPage() {
                             <span className="user-name">{row.username}</span>
                             {isMe && <span className="you-badge">YOU</span>}
                           </div>
+                        </td>
+                        <td className="hide-sm">
+                          {row.team_name && row.team_id
+                            ? <Link href={`/teams/${row.team_id}`} className="team-link">{row.team_name}</Link>
+                            : <span className="no-team">—</span>
+                          }
                         </td>
                         <td className="num-cell hide-sm">{row.sessions_played}</td>
                         <td className="num-cell hide-sm">{row.questions_answered.toLocaleString()}</td>
@@ -362,6 +406,7 @@ export default function LeaderboardPage() {
                     <tr>
                       <th style={{ width: 60 }}>Rank</th>
                       <th>Player</th>
+                      <th className="hide-sm">Team</th>
                       <th className="right hide-sm">Plays</th>
                       <th className="right hide-sm">Answered</th>
                       <th className="right hide-sm">Correct</th>
@@ -374,7 +419,7 @@ export default function LeaderboardPage() {
                       Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
                     ) : filteredQuiz.length === 0 ? (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="lb-empty">
                             <div className="lb-empty-title">No one has played {quizName(selectedQuiz)} yet</div>
                             <div className="lb-empty-body">Be the first to try it.</div>
@@ -402,6 +447,12 @@ export default function LeaderboardPage() {
                                 {isMe && <span className="you-badge">YOU</span>}
                               </div>
                             </td>
+                            <td className="hide-sm">
+                              {row.team_name && row.team_id
+                                ? <Link href={`/teams/${row.team_id}`} className="team-link">{row.team_name}</Link>
+                                : <span className="no-team">—</span>
+                              }
+                            </td>
                             <td className="num-cell hide-sm">{row.sessions_played}</td>
                             <td className="num-cell hide-sm">{row.questions_answered.toLocaleString()}</td>
                             <td className="num-cell hide-sm">
@@ -421,6 +472,69 @@ export default function LeaderboardPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            BY TEAM TAB
+        ══════════════════════════════════════════════════════════════════════ */}
+        {tab === "by-team" && !error && (
+          <div className="lb-table-wrap">
+            <table className="lb-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 60 }}>Rank</th>
+                  <th>Team</th>
+                  <th className="right hide-sm">Members</th>
+                  <th className="right hide-sm">Answered</th>
+                  <th className="right hide-sm">Correct</th>
+                  <th style={{ minWidth: 160 }}>Accuracy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingTeam ? (
+                  Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+                ) : teamData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <div className="lb-empty">
+                        <div className="lb-empty-title">No teams yet</div>
+                        <div className="lb-empty-body">Join or create a team to appear here.</div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  teamData.map((row, i) => {
+                    const m = medal(i + 1);
+                    return (
+                      <tr key={row.team_id}>
+                        <td>
+                          <div className="rank-cell">
+                            {m
+                              ? <span className="rank-medal">{m}</span>
+                              : <span className="rank-num">#{i + 1}</span>
+                            }
+                          </div>
+                        </td>
+                        <td>
+                          <div className="team-cell">
+                            <div className="team-avatar">{row.team_name[0]?.toUpperCase()}</div>
+                            <Link href={`/teams/${row.team_id}`} className="team-name-link">{row.team_name}</Link>
+                          </div>
+                        </td>
+                        <td className="num-cell hide-sm">{row.member_count}</td>
+                        <td className="num-cell hide-sm">{row.questions_answered.toLocaleString()}</td>
+                        <td className="num-cell hide-sm">
+                          {row.questions_correct.toLocaleString()}
+                          <span className="sub-num"> / {row.questions_answered.toLocaleString()}</span>
+                        </td>
+                        <td><AccBar pct={Number(row.accuracy_pct)} /></td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
 
       </div>
