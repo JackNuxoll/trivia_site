@@ -147,7 +147,14 @@ export default function ResultsPage() {
   // Three states: "loading" | "ready" | "error"
   const [saveState,    setSaveState]    = useState<"loading" | "ready" | "error">("loading");
 
+  // Guard against React Strict Mode double-invoking this effect — refs survive
+  // the unmount/remount cycle so the second invocation exits before any DB write.
+  const hasSaved = useRef(false);
+
   useEffect(() => {
+    if (hasSaved.current) return;
+    hasSaved.current = true;
+
     let cancelled = false;
 
     async function persist() {
