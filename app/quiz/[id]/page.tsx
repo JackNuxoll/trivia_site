@@ -208,7 +208,7 @@ const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
 };
 
 // ── Fetch dynamic quiz from Supabase ──────────────────────────────────────────
-async function fetchDynamicQuiz(quizId: string): Promise<Quiz> {
+async function fetchDynamicQuiz(quizId: string, requestedCount?: number): Promise<Quiz> {
   const config = DYNAMIC_QUIZ_CONFIG[quizId];
   if (!config) throw new Error(`Unknown quiz: ${quizId}`);
 
@@ -223,9 +223,10 @@ async function fetchDynamicQuiz(quizId: string): Promise<Quiz> {
   );
 
   const qps = config.questionsPerSession;
-  const count = typeof qps === "number"
+  const defaultCount = typeof qps === "number"
     ? qps
     : Math.floor(Math.random() * (qps[1] - qps[0] + 1)) + qps[0];
+  const count = requestedCount ?? defaultCount;
 
   const selected = shuffle(data).slice(0, Math.min(count, data.length));
 
@@ -297,10 +298,13 @@ export default function QuizPage() {
     () => Array(staticQuiz?.questions.length ?? 0).fill(null)
   );
   const [timeLeft,    setTimeLeft]    = useState(staticQuiz?.timeLimitSeconds ?? 150);
-  const [timerActive,  setTimerActive]  = useState(isStaticQuiz);
-  const [showModal,    setShowModal]    = useState(false);
-  const [showQuitModal, setShowQuitModal] = useState(false);
-  const [advancing,    setAdvancing]    = useState(false);
+  const [timerActive,    setTimerActive]    = useState(isStaticQuiz);
+  const [showModal,      setShowModal]      = useState(false);
+  const [showQuitModal,  setShowQuitModal]  = useState(false);
+  const [advancing,      setAdvancing]      = useState(false);
+  const [started,        setStarted]        = useState(isStaticQuiz);
+  const [selectedCount,  setSelectedCount]  = useState(10);
+  const [availableCount, setAvailableCount] = useState<number | null>(null);
   const [accuracyMap,  setAccuracyMap]  = useState<Map<string, AccuracyEntry>>(new Map());
 
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -313,10 +317,11 @@ export default function QuizPage() {
       setLoadError(`Quiz not found. It may have been removed or the URL is incorrect.`);
       return;
     }
-    fetchDynamicQuiz(quizId)
+    if (!started) return;
+    fetchDynamicQuiz(quizId, selectedCount)
       .then((q: Quiz) => setDynamicQuiz(q))
       .catch((e: Error) => setLoadError(e.message ?? "Failed to load quiz"));
-  }, [isStaticQuiz, isDynamicQuiz, quizId]);
+  }, [isStaticQuiz, isDynamicQuiz, quizId, started]); // selectedCount captured at start time
 
   // Bootstrap state once dynamic quiz arrives
   useEffect(() => {
@@ -326,6 +331,23 @@ export default function QuizPage() {
     setCurrentIdx(0);
     setTimerActive(true);
   }, [dynamicQuiz]);
+
+  // Fetch total available question count for the setup screen
+  useEffect(() => {
+    if (isStaticQuiz || !isDynamicQuiz) return;
+    const config = DYNAMIC_QUIZ_CONFIG[quizId];
+    supabase
+      .from("questions")
+      .select("*", { count: "exact", head: true })
+      .eq("category", config.category)
+      .then(({ count }) => {
+        const n = count ?? 0;
+        setAvailableCount(n);
+        // Auto-select largest option that fits
+        const valid = [5, 10, 15, 20].filter(x => x <= n);
+        if (valid.length > 0) setSelectedCount(valid[valid.length - 1]);
+      });
+  }, [isStaticQuiz, isDynamicQuiz, quizId]);
 
   // Fetch per-question historical accuracy for signed-in users
   useEffect(() => {
@@ -458,6 +480,116 @@ export default function QuizPage() {
     .quit-btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; background: transparent; border: 1px solid #E5E3DC; cursor: pointer; text-decoration: none; transition: all 0.15s; }
     .quit-btn:hover { border-color: #DC2626; color: #DC2626; background: #FEF2F2; }
   `;
+
+  // ── Setup screen (dynamic quizzes, before user starts) ──────────────────────
+  if (!started && isDynamicQuiz && !loadError) {
+    const config  = DYNAMIC_QUIZ_CONFIG[quizId];
+    const diff    = DIFFICULTY_COLOR[config.difficulty];
+    const options = [5, 10, 15, 20].filter(n => availableCount === null || n <= availableCount);
+
+    return (
+      <div style={{ fontFamily: "'Inter', sans-serif", background: "#F8F7F4", minHeight: "100vh" }}>
+        <style>{`
+          ${sharedStyles}
+          @keyframes shimmer { from{background-position:-400px 0} to{background-position:400px 0} }
+          .setup-shell {
+            display: flex; align-items: center; justify-content: center;
+            min-height: calc(100vh - 64px);
+            padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 5vw, 2rem);
+          }
+          .setup-card {
+            background: #fff; border-radius: 20px; border: 1px solid #E5E3DC;
+            padding: 2.5rem 2rem; width: 100%; max-width: 440px; text-align: center;
+          }
+          .setup-cat-pill {
+            display: inline-block; font-size: 11px; font-weight: 600;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: #4F46E5; background: #E8E6FF;
+            padding: 4px 12px; border-radius: 99px; margin-bottom: 1rem;
+          }
+          .setup-title {
+            font-family: 'Sora', sans-serif; font-size: 1.8rem; font-weight: 700;
+            color: #1A1A2E; letter-spacing: -0.5px; margin-bottom: 0.75rem;
+          }
+          .setup-meta {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; font-size: 13px; color: #9CA3AF; margin-bottom: 2rem;
+          }
+          .setup-divider { height: 1px; background: #E5E3DC; margin-bottom: 1.75rem; }
+          .setup-count-label {
+            font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 1rem;
+          }
+          .count-options { display: flex; justify-content: center; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap; }
+          .count-pill {
+            width: 64px; height: 52px; border-radius: 12px;
+            font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700;
+            border: 2px solid #E5E3DC; background: #F8F7F4; color: #4B5563;
+            cursor: pointer; transition: all 0.15s;
+          }
+          .count-pill:hover { border-color: #4F46E5; color: #4F46E5; background: #F5F4FF; }
+          .count-pill.active { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+          .count-skeleton {
+            width: 64px; height: 52px; border-radius: 12px;
+            background: linear-gradient(90deg,#EFEDE7 25%,#E5E3DC 50%,#EFEDE7 75%);
+            background-size: 400px 100%; animation: shimmer 1.4s infinite;
+          }
+          .setup-start {
+            width: 100%; padding: 14px; border-radius: 12px; background: #4F46E5;
+            color: #fff; font-size: 16px; font-weight: 600; border: none;
+            cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif;
+          }
+          .setup-start:hover:not(:disabled) { background: #4338CA; transform: translateY(-1px); }
+          .setup-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        `}</style>
+
+        <nav className="quiz-nav">
+          <Link href="/" className="quiz-nav-logo">Quiz<span>Sharp</span></Link>
+          <Link href="/quizzes" className="quit-btn">Back to quizzes</Link>
+        </nav>
+
+        <div className="setup-shell">
+          <div className="setup-card">
+            <div className="setup-cat-pill">{config.category}</div>
+            <h1 className="setup-title">{config.title}</h1>
+            <div className="setup-meta">
+              <span style={{ ...diff, padding: "3px 10px", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>
+                {config.difficulty}
+              </span>
+              {availableCount !== null && (
+                <span>{availableCount} questions in pool</span>
+              )}
+            </div>
+
+            <div className="setup-divider" />
+
+            <div className="setup-count-label">How many questions?</div>
+            <div className="count-options">
+              {availableCount === null
+                ? [1, 2, 3, 4].map((i) => <div key={i} className="count-skeleton" style={{ animationDelay: `${i * 80}ms` }} />)
+                : options.map((n) => (
+                    <button
+                      key={n}
+                      className={`count-pill${selectedCount === n ? " active" : ""}`}
+                      onClick={() => setSelectedCount(n)}
+                    >
+                      {n}
+                    </button>
+                  ))
+              }
+            </div>
+
+            <button
+              className="setup-start"
+              disabled={availableCount === null || availableCount === 0}
+              onClick={() => setStarted(true)}
+            >
+              Start Quiz →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Error screen ────────────────────────────────────────────────────────────
   if (loadError) {
