@@ -69,16 +69,20 @@ async function insertSession(
   userId: string | null,
   timeUsedSeconds?: number
 ): Promise<string | null> {
+  const safeTotal   = Math.max(1, Math.min(500, result.total));
+  const safeScore   = Math.max(0, Math.min(safeTotal, result.score));
+  const safeTimeSec = timeUsedSeconds != null ? Math.max(0, Math.min(86400, timeUsedSeconds)) : null;
+
   const { data, error } = await supabase
     .from("sessions")
     .insert({
       user_id: userId,
       quiz_id: quizId,
-      started_at: new Date(result.timestamp - (timeUsedSeconds ?? 0) * 1000).toISOString(),
+      started_at: new Date(result.timestamp - (safeTimeSec ?? 0) * 1000).toISOString(),
       ended_at: new Date(result.timestamp).toISOString(),
-      total_questions: result.total,
-      total_correct: result.score,
-      time_spent_seconds: timeUsedSeconds ?? null,
+      total_questions: safeTotal,
+      total_correct: safeScore,
+      time_spent_seconds: safeTimeSec,
     })
     .select("id")
     .single();

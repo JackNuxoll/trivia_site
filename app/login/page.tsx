@@ -19,7 +19,9 @@ export default function LoginPage() {
 function LoginContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo   = searchParams.get("redirectTo") ?? "/";
+  // Validate redirectTo is a safe relative path — blocks open-redirect attacks
+  const raw        = searchParams.get("redirectTo") ?? "/";
+  const redirectTo = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 
   const [mode,     setMode]     = useState<Mode>("login");
   const [email,    setEmail]    = useState("");

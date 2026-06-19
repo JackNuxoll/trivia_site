@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { saveResult, type QuizResult, type ResponseData } from "@/lib/quizResults";
+import { saveResult, loadResults, type QuizResult, type ResponseData } from "@/lib/quizResults";
 import Nav from "@/components/Nav";
 
 // ── Quiz metadata ─────────────────────────────────────────────────────────────
@@ -159,6 +159,7 @@ export default function ResultsPage() {
 
     async function persist() {
       try {
+        // Read per-question responses from sessionStorage
         let responses: ResponseData[] | undefined;
         try {
           const raw = sessionStorage.getItem(`quiz-responses-${quizId}`);
@@ -168,7 +169,29 @@ export default function ResultsPage() {
           }
         } catch { /* private browsing */ }
 
-        const thisResult: QuizResult = { score, total, pct, timestamp: Date.now() };
+        if (!responses) {
+          // No session data — this is a page reload or a crafted URL.
+          // Load existing history for the trend chart but do NOT write to the DB.
+          const existing = await loadResults(quizId);
+          if (!cancelled) {
+            setHistory(existing);
+            setHighlightIdx(Math.max(0, existing.length - 1));
+            setSaveState("ready");
+          }
+          return;
+        }
+
+        // Compute score from actual per-question data — never trust URL params for saving.
+        const computedScore = responses.filter((r) => r.isCorrect).length;
+        const computedTotal = responses.length;
+        const computedPct   = computedTotal > 0 ? Math.round((computedScore / computedTotal) * 100) : 0;
+
+        const thisResult: QuizResult = {
+          score:     computedScore,
+          total:     computedTotal,
+          pct:       computedPct,
+          timestamp: Date.now(),
+        };
         const all = await saveResult({
           quizId,
           result: thisResult,

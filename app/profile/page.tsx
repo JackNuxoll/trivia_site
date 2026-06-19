@@ -74,7 +74,7 @@ export default function ProfilePage() {
   // ── Debounced team search ───────────────────────────────────────────────────
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (!searchQuery.trim()) {
+    if (searchQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
@@ -114,11 +114,15 @@ export default function ProfilePage() {
   }
 
   async function handleLeaveTeam() {
-    if (!user) return;
+    if (!user || !userProfile?.team_id) return;
     setLeavingTeam(true);
+    // Use update+eq instead of upsert to avoid race conditions:
+    // only clears team_id if the user is still on this specific team.
     await supabase
       .from("users")
-      .upsert({ id: user.id, email: user.email!, team_id: null }, { onConflict: "id" });
+      .update({ team_id: null })
+      .eq("id", user.id)
+      .eq("team_id", userProfile.team_id);
     await refreshProfile();
     setLeavingTeam(false);
   }
@@ -532,6 +536,7 @@ export default function ProfilePage() {
                       type="text"
                       placeholder="Search teams by name…"
                       value={searchQuery}
+                      maxLength={80}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     {searching && (
