@@ -14,9 +14,12 @@ const QUIZ_CATALOG = [
   { id: "mlb-divisions",    title: "MLB Divisions",        displayCategory: "Sports",    dbCategory: "MLB Divisions",   difficulty: "Medium" },
   { id: "nba-divisions",    title: "NBA Divisions",        displayCategory: "Sports",    dbCategory: "NBA Divisions",   difficulty: "Medium" },
   { id: "ncaa-conferences", title: "NCAA Conferences",     displayCategory: "Sports",    dbCategory: "NCAA Conferences",difficulty: "Hard"   },
-  { id: "wwii-battles",   title: "WWII: Key Battles",           displayCategory: "History", dbCategory: "WWII Battles",  difficulty: "Medium" },
-  { id: "wwii-leaders",   title: "WWII: Leaders & Figures",     displayCategory: "History", dbCategory: "WWII Leaders",  difficulty: "Medium" },
-  { id: "wwii-timeline",  title: "WWII: Timeline & Milestones", displayCategory: "History", dbCategory: "WWII Timeline", difficulty: "Easy"   },
+  { id: "wwii-battles",     title: "WWII: Key Battles",           displayCategory: "History", dbCategory: "WWII Battles",    difficulty: "Medium" },
+  { id: "wwii-leaders",     title: "WWII: Leaders & Figures",     displayCategory: "History", dbCategory: "WWII Leaders",    difficulty: "Medium" },
+  { id: "wwii-timeline",    title: "WWII: Timeline & Milestones", displayCategory: "History", dbCategory: "WWII Timeline",   difficulty: "Easy"   },
+  { id: "movies-awards",    title: "Academy Awards",              displayCategory: "Movies",  dbCategory: "Academy Awards",  difficulty: "Medium" },
+  { id: "movies-quotes",    title: "Famous Movie Quotes",         displayCategory: "Movies",  dbCategory: "Movie Quotes",    difficulty: "Easy"   },
+  { id: "movies-villains",  title: "Movie Villains",              displayCategory: "Movies",  dbCategory: "Movie Villains",  difficulty: "Hard"   },
 ] as const;
 
 type Quiz = typeof QUIZ_CATALOG[number] & { questionCount: number; plays: number };
@@ -29,7 +32,7 @@ const DIFFICULTY_COLOR: Record<string, { bg: string; color: string }> = {
 
 const CATEGORY_ICON: Record<string, string> = {
   Geography: "🌍", Sports: "🏆", History: "🏛", Science: "🔬",
-  "Pop Culture": "🎬", Technology: "💻",
+  Movies: "🎬", "Pop Culture": "🎭", Technology: "💻",
 };
 
 const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"] as const;

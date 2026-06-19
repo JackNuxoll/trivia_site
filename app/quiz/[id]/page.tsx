@@ -181,6 +181,30 @@ const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
     secondsPerQuestion: 18,
     imageAlt: "WWII milestone",
   },
+  "movies-awards": {
+    category: "Academy Awards",
+    title: "Academy Awards",
+    difficulty: "Medium",
+    questionsPerSession: 10,
+    secondsPerQuestion: 20,
+    imageAlt: "Academy Awards",
+  },
+  "movies-quotes": {
+    category: "Movie Quotes",
+    title: "Famous Movie Quotes",
+    difficulty: "Easy",
+    questionsPerSession: 10,
+    secondsPerQuestion: 18,
+    imageAlt: "Movie quote",
+  },
+  "movies-villains": {
+    category: "Movie Villains",
+    title: "Movie Villains",
+    difficulty: "Hard",
+    questionsPerSession: 10,
+    secondsPerQuestion: 20,
+    imageAlt: "Movie villain",
+  },
 };
 
 // ── Fetch dynamic quiz from Supabase ──────────────────────────────────────────
