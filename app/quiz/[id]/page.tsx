@@ -299,6 +299,7 @@ export default function QuizPage() {
   const [timeLeft,    setTimeLeft]    = useState(staticQuiz?.timeLimitSeconds ?? 150);
   const [timerActive,  setTimerActive]  = useState(isStaticQuiz);
   const [showModal,    setShowModal]    = useState(false);
+  const [showQuitModal, setShowQuitModal] = useState(false);
   const [advancing,    setAdvancing]    = useState(false);
   const [accuracyMap,  setAccuracyMap]  = useState<Map<string, AccuracyEntry>>(new Map());
 
@@ -466,6 +467,7 @@ export default function QuizPage() {
         <nav className="quiz-nav">
           <Link href="/" className="quiz-nav-logo">Quiz<span>Sharp</span></Link>
           <Link href="/quizzes" className="quit-btn">Back to quizzes</Link>
+
         </nav>
         <div style={{ maxWidth: 480, margin: "6rem auto", padding: "0 1.5rem", textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: "1rem" }}>⚠️</div>
@@ -496,6 +498,7 @@ export default function QuizPage() {
         <nav className="quiz-nav">
           <Link href="/" className="quiz-nav-logo">Quiz<span>Sharp</span></Link>
           <Link href="/quizzes" className="quit-btn">Back to quizzes</Link>
+
         </nav>
         <div style={{ maxWidth: 480, margin: "6rem auto", padding: "0 1.5rem", textAlign: "center" }}>
           <div className="loader" />
@@ -647,7 +650,9 @@ export default function QuizPage() {
       {/* ── Nav ── */}
       <nav className="quiz-nav">
         <Link href="/" className="quiz-nav-logo">Quiz<span>Sharp</span></Link>
-        <Link href="/quizzes" className="quit-btn">Quit quiz</Link>
+        <button className="quit-btn" onClick={() => { setTimerActive(false); setShowQuitModal(true); }}>
+          Exit quiz
+        </button>
       </nav>
 
       <div className="quiz-shell">
@@ -745,6 +750,40 @@ export default function QuizPage() {
         )}
 
       </div>
+
+      {/* ── Quit confirmation modal ── */}
+      {showQuitModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-handle" />
+            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: 36, marginBottom: "0.75rem" }}>🚪</div>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: "1.2rem", fontWeight: 700, color: "#1A1A2E", marginBottom: "0.5rem" }}>
+                Exit this quiz?
+              </div>
+              <div style={{ fontSize: 14, color: "#6B7280", lineHeight: 1.5 }}>
+                You&apos;re on question {currentIdx + 1} of {questions.length}.<br />
+                Your progress won&apos;t be saved if you leave now.
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn-full btn-full-secondary"
+                onClick={() => { setShowQuitModal(false); setTimerActive(true); }}
+              >
+                Keep playing
+              </button>
+              <button
+                className="btn-full btn-full-primary"
+                style={{ background: "#DC2626" }}
+                onClick={() => router.push("/quizzes")}
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Summary modal ── */}
       {showModal && (
