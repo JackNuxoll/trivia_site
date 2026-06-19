@@ -296,7 +296,7 @@ export default function QuizzesPage() {
                   <p className="quiz-card-title">{quiz.title}</p>
 
                   <div className="quiz-card-meta">
-                    <span>{quiz.questionCount} questions</span>
+                    <span>{quiz.questionCount} in pool</span>
                     {quiz.plays > 0
                       ? <span>{quiz.plays.toLocaleString()} {quiz.plays === 1 ? "play" : "plays"}</span>
                       : <span className="random-tag">🎲 Random each time</span>
