@@ -13,6 +13,7 @@ interface Question {
   correctIndex: number;
   explanation: string;
   imageUrl?: string;
+  category?: string;
 }
 
 interface Quiz {
@@ -100,7 +101,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ── Dynamic quiz config ───────────────────────────────────────────────────────
 interface DynamicQuizConfig {
-  category: string;
+  category: string | string[];
   title: string;
   difficulty: "Easy" | "Medium" | "Hard";
   questionsPerSession: number | [number, number]; // fixed count or [min, max]
@@ -205,6 +206,22 @@ const DYNAMIC_QUIZ_CONFIG: Record<string, DynamicQuizConfig> = {
     secondsPerQuestion: 20,
     imageAlt: "Movie villain",
   },
+  "mixed-all": {
+    category: ["Flags","US State Capitals","NFL Divisions","MLB Divisions","NBA Divisions","NCAA Conferences","WWII Battles","WWII Leaders","WWII Timeline","Academy Awards","Movie Quotes","Movie Villains"],
+    title: "All-Around Challenge",
+    difficulty: "Hard",
+    questionsPerSession: 20,
+    secondsPerQuestion: 20,
+    imageAlt: "Quiz image",
+  },
+  "mixed-sports": {
+    category: ["NFL Divisions","MLB Divisions","NBA Divisions","NCAA Conferences"],
+    title: "Sports Showdown",
+    difficulty: "Medium",
+    questionsPerSession: 20,
+    secondsPerQuestion: 20,
+    imageAlt: "Sports team logo",
+  },
 };
 
 // ── Fetch dynamic quiz from Supabase ──────────────────────────────────────────
@@ -212,10 +229,11 @@ async function fetchDynamicQuiz(quizId: string, requestedCount?: number): Promis
   const config = DYNAMIC_QUIZ_CONFIG[quizId];
   if (!config) throw new Error(`Unknown quiz: ${quizId}`);
 
+  const categories = Array.isArray(config.category) ? config.category : [config.category];
   const { data, error } = await supabase
     .from("questions")
-    .select("id, body, correct_answer, wrong_answers, explanation, image_url")
-    .eq("category", config.category);
+    .select("id, body, correct_answer, wrong_answers, explanation, image_url, category")
+    .in("category", categories);
 
   if (error) throw new Error(`Supabase error: ${error.message}`);
   if (!data?.length) throw new Error(
@@ -240,13 +258,18 @@ async function fetchDynamicQuiz(quizId: string, requestedCount?: number): Promis
       correctIndex: pool.indexOf(row.correct_answer),
       explanation: row.explanation ?? "",
       imageUrl: row.image_url ?? undefined,
+      category: row.category ?? undefined,
     };
   });
+
+  const displayCategory = Array.isArray(config.category)
+    ? "Mixed"
+    : config.category;
 
   return {
     id: quizId,
     title: config.title,
-    category: config.category,
+    category: displayCategory,
     difficulty: config.difficulty,
     timeLimitSeconds: questions.length * config.secondsPerQuestion,
     questions,
@@ -336,14 +359,14 @@ export default function QuizPage() {
   useEffect(() => {
     if (isStaticQuiz || !isDynamicQuiz) return;
     const config = DYNAMIC_QUIZ_CONFIG[quizId];
+    const categories = Array.isArray(config.category) ? config.category : [config.category];
     supabase
       .from("questions")
       .select("*", { count: "exact", head: true })
-      .eq("category", config.category)
+      .in("category", categories)
       .then(({ count }) => {
         const n = count ?? 0;
         setAvailableCount(n);
-        // Auto-select largest option that fits
         const valid = [5, 10, 15, 20].filter(x => x <= n);
         if (valid.length > 0) setSelectedCount(valid[valid.length - 1]);
       });
@@ -459,11 +482,9 @@ export default function QuizPage() {
     router.push(`/quiz/${quizId}/results?${query.toString()}`);
   }
 
-  const diff        = DIFFICULTY_COLOR[quiz?.difficulty ?? "Medium"];
-  const isFlagsQuiz = quiz?.category === "Flags";
-  const dynConfig   = DYNAMIC_QUIZ_CONFIG[quizId];
-  const imgClass    = isFlagsQuiz ? "flag-img" : "team-logo";
-  const imgAlt      = dynConfig?.imageAlt ?? "Image";
+  const diff      = DIFFICULTY_COLOR[quiz?.difficulty ?? "Medium"];
+  const dynConfig = DYNAMIC_QUIZ_CONFIG[quizId];
+  const imgAlt    = dynConfig?.imageAlt ?? "Image";
 
   // ── Shared styles ──────────────────────────────────────────────────────────
   const sharedStyles = `
@@ -825,7 +846,7 @@ export default function QuizPage() {
               <img
                 src={question.imageUrl}
                 alt={imgAlt}
-                className={imgClass}
+                className={question.category === "Flags" ? "flag-img" : "team-logo"}
               />
             )}
 

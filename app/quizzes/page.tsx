@@ -6,23 +6,34 @@ import Nav from "@/components/Nav";
 import { supabase } from "@/lib/supabaseClient";
 
 // ── Quiz catalog: only quizzes backed by the questions table ──────────────────
-// dbCategory must match the `category` column value in public.questions.
-const QUIZ_CATALOG = [
-  { id: "flags",            title: "World Flags",          displayCategory: "Geography", dbCategory: "Flags",           difficulty: "Medium" },
-  { id: "us-state-capitals",title: "US State Capitals",    displayCategory: "Geography", dbCategory: "US State Capitals",difficulty: "Medium" },
-  { id: "nfl-divisions",    title: "NFL Divisions",        displayCategory: "Sports",    dbCategory: "NFL Divisions",   difficulty: "Medium" },
-  { id: "mlb-divisions",    title: "MLB Divisions",        displayCategory: "Sports",    dbCategory: "MLB Divisions",   difficulty: "Medium" },
-  { id: "nba-divisions",    title: "NBA Divisions",        displayCategory: "Sports",    dbCategory: "NBA Divisions",   difficulty: "Medium" },
-  { id: "ncaa-conferences", title: "NCAA Conferences",     displayCategory: "Sports",    dbCategory: "NCAA Conferences",difficulty: "Hard"   },
-  { id: "wwii-battles",     title: "WWII: Key Battles",           displayCategory: "History", dbCategory: "WWII Battles",    difficulty: "Medium" },
-  { id: "wwii-leaders",     title: "WWII: Leaders & Figures",     displayCategory: "History", dbCategory: "WWII Leaders",    difficulty: "Medium" },
-  { id: "wwii-timeline",    title: "WWII: Timeline & Milestones", displayCategory: "History", dbCategory: "WWII Timeline",   difficulty: "Easy"   },
-  { id: "movies-awards",    title: "Academy Awards",              displayCategory: "Movies",  dbCategory: "Academy Awards",  difficulty: "Medium" },
-  { id: "movies-quotes",    title: "Famous Movie Quotes",         displayCategory: "Movies",  dbCategory: "Movie Quotes",    difficulty: "Easy"   },
-  { id: "movies-villains",  title: "Movie Villains",              displayCategory: "Movies",  dbCategory: "Movie Villains",  difficulty: "Hard"   },
-] as const;
+// dbCategory: single category string. dbCategories: overrides for multi-category quizzes.
+interface CatalogEntry {
+  id: string;
+  title: string;
+  displayCategory: string;
+  dbCategory: string;
+  dbCategories?: string[];
+  difficulty: "Easy" | "Medium" | "Hard";
+}
 
-type Quiz = typeof QUIZ_CATALOG[number] & { questionCount: number; plays: number };
+const QUIZ_CATALOG: CatalogEntry[] = [
+  { id: "flags",            title: "World Flags",                 displayCategory: "Geography", dbCategory: "Flags",                                                                                                                                          difficulty: "Medium" },
+  { id: "us-state-capitals",title: "US State Capitals",           displayCategory: "Geography", dbCategory: "US State Capitals",                                                                                                                              difficulty: "Medium" },
+  { id: "nfl-divisions",    title: "NFL Divisions",               displayCategory: "Sports",    dbCategory: "NFL Divisions",                                                                                                                                  difficulty: "Medium" },
+  { id: "mlb-divisions",    title: "MLB Divisions",               displayCategory: "Sports",    dbCategory: "MLB Divisions",                                                                                                                                  difficulty: "Medium" },
+  { id: "nba-divisions",    title: "NBA Divisions",               displayCategory: "Sports",    dbCategory: "NBA Divisions",                                                                                                                                  difficulty: "Medium" },
+  { id: "ncaa-conferences", title: "NCAA Conferences",            displayCategory: "Sports",    dbCategory: "NCAA Conferences",                                                                                                                               difficulty: "Hard"   },
+  { id: "wwii-battles",     title: "WWII: Key Battles",           displayCategory: "History",   dbCategory: "WWII Battles",                                                                                                                                   difficulty: "Medium" },
+  { id: "wwii-leaders",     title: "WWII: Leaders & Figures",     displayCategory: "History",   dbCategory: "WWII Leaders",                                                                                                                                   difficulty: "Medium" },
+  { id: "wwii-timeline",    title: "WWII: Timeline & Milestones", displayCategory: "History",   dbCategory: "WWII Timeline",                                                                                                                                  difficulty: "Easy"   },
+  { id: "movies-awards",    title: "Academy Awards",              displayCategory: "Movies",    dbCategory: "Academy Awards",                                                                                                                                 difficulty: "Medium" },
+  { id: "movies-quotes",    title: "Famous Movie Quotes",         displayCategory: "Movies",    dbCategory: "Movie Quotes",                                                                                                                                   difficulty: "Easy"   },
+  { id: "movies-villains",  title: "Movie Villains",              displayCategory: "Movies",    dbCategory: "Movie Villains",                                                                                                                                 difficulty: "Hard"   },
+  { id: "mixed-all",        title: "All-Around Challenge",        displayCategory: "Mixed",     dbCategory: "Mixed", dbCategories: ["Flags","US State Capitals","NFL Divisions","MLB Divisions","NBA Divisions","NCAA Conferences","WWII Battles","WWII Leaders","WWII Timeline","Academy Awards","Movie Quotes","Movie Villains"], difficulty: "Hard"   },
+  { id: "mixed-sports",     title: "Sports Showdown",             displayCategory: "Mixed",     dbCategory: "Mixed", dbCategories: ["NFL Divisions","MLB Divisions","NBA Divisions","NCAA Conferences"],                                                      difficulty: "Medium" },
+];
+
+type Quiz = CatalogEntry & { questionCount: number; plays: number };
 
 const DIFFICULTY_COLOR: Record<string, { bg: string; color: string }> = {
   Easy:   { bg: "#DCFCE7", color: "#166534" },
@@ -32,7 +43,7 @@ const DIFFICULTY_COLOR: Record<string, { bg: string; color: string }> = {
 
 const CATEGORY_ICON: Record<string, string> = {
   Geography: "🌍", Sports: "🏆", History: "🏛", Science: "🔬",
-  Movies: "🎬", "Pop Culture": "🎭", Technology: "💻",
+  Movies: "🎬", "Pop Culture": "🎭", Technology: "💻", Mixed: "🎲",
 };
 
 const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"] as const;
@@ -67,12 +78,15 @@ export default function QuizzesPage() {
 
       // Build quiz list — only include entries that have questions in the DB
       const live: Quiz[] = QUIZ_CATALOG
-        .filter((q) => (categoryCounts[q.dbCategory] ?? 0) > 0)
-        .map((q) => ({
-          ...q,
-          questionCount: categoryCounts[q.dbCategory] ?? 0,
-          plays: playCounts[q.id] ?? 0,
-        }));
+        .filter((q) => {
+          const cats = q.dbCategories ?? [q.dbCategory];
+          return cats.some((c) => (categoryCounts[c] ?? 0) > 0);
+        })
+        .map((q) => {
+          const cats = q.dbCategories ?? [q.dbCategory];
+          const questionCount = cats.reduce((sum, c) => sum + (categoryCounts[c] ?? 0), 0);
+          return { ...q, questionCount, plays: playCounts[q.id] ?? 0 };
+        });
 
       setQuizzes(live);
       setLoading(false);

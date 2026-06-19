@@ -21,6 +21,8 @@ const QUIZ_NAMES: Record<string, string> = {
   "movies-awards":      "Academy Awards",
   "movies-quotes":      "Famous Movie Quotes",
   "movies-villains":    "Movie Villains",
+  "mixed-all":          "All-Around Challenge",
+  "mixed-sports":       "Sports Showdown",
   "geo-capitals":       "World Capitals",
   "pop-culture-90":     "90s Nostalgia",
   "science-bio":        "Human Biology",
