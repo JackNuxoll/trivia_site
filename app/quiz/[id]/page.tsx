@@ -850,7 +850,7 @@ export default function QuizPage() {
               />
             )}
 
-            <p className={`question-text${question.imageUrl && isFlagsQuiz ? " flag-q" : ""}`}>
+            <p className={`question-text${question.imageUrl && question.category === "Flags" ? " flag-q" : ""}`}>
               {question.text}
             </p>
 
